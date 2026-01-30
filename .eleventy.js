@@ -27,7 +27,6 @@ module.exports = function(eleventyConfig) {
   });
 
   return {
-    pathPrefix: "/glibunderstanding.com/",
     dir: {
       input: "src",
       output: "_site",
