@@ -1,0 +1,29 @@
+---
+layout: base.njk
+title: Essays
+---
+<div class="home-intro">
+  <h1>Essays</h1>
+  <p>Longer-form thoughts and explorations.</p>
+</div>
+
+<ul class="essay-list">
+  {% for essay in collections.essays %}
+  <li class="essay-item">
+    <a href="{{ essay.url }}">
+      <h2 class="essay-title">{{ essay.data.title }}</h2>
+      <div class="essay-meta">
+        <span>{{ essay.date | formatDate }}</span>
+        <span>{{ essay.templateContent | readingTime }}</span>
+      </div>
+      {% if essay.data.excerpt %}
+      <p class="essay-excerpt">{{ essay.data.excerpt }}</p>
+      {% endif %}
+    </a>
+  </li>
+  {% else %}
+  <li class="essay-item">
+    <p>No essays yet.</p>
+  </li>
+  {% endfor %}
+</ul>

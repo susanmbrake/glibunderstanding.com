@@ -1,0 +1,29 @@
+---
+layout: base.njk
+title: Musings
+---
+<div class="home-intro">
+  <h1>Musings</h1>
+  <p>Shorter thoughts, project notes, and ideas.</p>
+</div>
+
+<ul class="essay-list">
+  {% for musing in collections.musings %}
+  <li class="essay-item">
+    <a href="{{ musing.url }}">
+      <h2 class="essay-title">{{ musing.data.title }}</h2>
+      <div class="essay-meta">
+        <span>{{ musing.date | formatDate }}</span>
+        <span>{{ musing.templateContent | readingTime }}</span>
+      </div>
+      {% if musing.data.excerpt %}
+      <p class="essay-excerpt">{{ musing.data.excerpt }}</p>
+      {% endif %}
+    </a>
+  </li>
+  {% else %}
+  <li class="essay-item">
+    <p>No musings yet.</p>
+  </li>
+  {% endfor %}
+</ul>

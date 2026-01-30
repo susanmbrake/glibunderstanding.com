@@ -9,6 +9,13 @@ module.exports = function(eleventyConfig) {
     });
   });
 
+  // Create a collection of musings sorted by date (newest first)
+  eleventyConfig.addCollection("musings", function(collectionApi) {
+    return collectionApi.getFilteredByGlob("src/musings/*.md").sort((a, b) => {
+      return b.date - a.date;
+    });
+  });
+
   // Format date filter
   eleventyConfig.addFilter("formatDate", function(date) {
     return new Date(date).toLocaleDateString("en-US", {
