@@ -1,0 +1,12 @@
+{
+  "name": "glibunderstanding",
+  "version": "1.0.0",
+  "description": "A minimal essay blog built with Eleventy",
+  "scripts": {
+    "start": "eleventy --serve",
+    "build": "eleventy"
+  },
+  "devDependencies": {
+    "@11ty/eleventy": "^2.0.1"
+  }
+}

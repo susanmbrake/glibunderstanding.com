@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Essays and thoughts">
+  <title>On the Art of Noticing | Essays</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script>
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-container">
+      <a href="/" class="nav-title">Essays</a>
+      <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/about/">About</a>
+        <button class="theme-toggle" aria-label="Toggle theme">
+          <span class="theme-toggle-light">Light</span>
+          <span class="theme-toggle-dark">Dark</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main">
+    <article>
+  <header class="essay-header">
+    <h1>On the Art of Noticing</h1>
+    <div class="essay-meta">
+      <span>January 12, 2026</span>
+      <span>3 min read</span>
+    </div>
+  </header>
+
+  <div class="essay-content">
+    <p>The world reveals itself to those who pay attention. But attention, like any skill, must be cultivated. In an age of infinite distractions, the simple act of noticing has become a radical practice.</p>
+<p>I first understood this while sitting in a cafe, waiting for a friend who was running late. With nothing to do and my phone deliberately left at home, I found myself truly looking at my surroundings for the first time. The way the afternoon light caught the steam rising from my coffee. The quiet choreography of the baristas behind the counter. The pattern of conversations ebbing and flowing around me.</p>
+<h2>The Paradox of Seeing</h2>
+<p>We assume that seeing is passive—that the world simply presents itself to our eyes and we absorb it. But this is backwards. Seeing is an active process, a form of questioning. Every glance is a choice about what matters.</p>
+<p>The photographer learns this truth early. A camera can point at anything, but a photograph requires selection. What do you include? What do you leave out? These decisions reveal not the world as it is, but the world as you have chosen to understand it.</p>
+<blockquote>
+<p>&quot;The question is not what you look at, but what you see.&quot; — Henry David Thoreau</p>
+</blockquote>
+<p>The same principle applies to every act of perception. Two people can walk down the same street and inhabit entirely different realities. One sees only obstacles and irritations. Another notices the play of shadows on brick, the unexpected kindness of a stranger, the persistence of a flower growing through cracked pavement.</p>
+<h2>Attention as Practice</h2>
+<p>This capacity for noticing is not fixed at birth. It can be developed, like a muscle, through consistent exercise. Here are a few practices I've found valuable:</p>
+<ol>
+<li>
+<p><strong>Daily observation notes.</strong> Each evening, write down three things you noticed during the day. They need not be profound—in fact, the mundane details often prove most interesting over time.</p>
+</li>
+<li>
+<p><strong>Slow walks.</strong> Choose a familiar route and walk it at half your usual pace. The goal is not exercise but awareness. What have you been missing?</p>
+</li>
+<li>
+<p><strong>Single-tasking.</strong> When drinking coffee, just drink coffee. When reading, just read. The practice of doing one thing at a time strengthens our ability to be present.</p>
+</li>
+<li>
+<p><strong>Drawing.</strong> You don't need to be an artist. The act of sketching forces a different kind of looking—you must understand shapes, relationships, and details that the casual glance ignores.</p>
+</li>
+</ol>
+<h2>What We Miss</h2>
+<p>I recently learned that the average person touches their phone over 2,600 times per day. Each touch is a small escape from the present moment, a retreat into the curated reality of our screens.</p>
+<p>I don't say this to moralize. These tools serve real purposes. But they come with costs we rarely acknowledge. Every moment spent scrolling is a moment not spent noticing. And the things we fail to notice—the texture of our lives, the small revelations hidden in ordinary moments—these are irreplaceable.</p>
+<p>The art of noticing is, ultimately, the art of being alive to your own life. It requires no special equipment, no particular expertise, no permission from anyone. Only the willingness to look, and to keep looking, until you begin to see.</p>
+<hr>
+<p><em>What have you noticed today that you might have missed yesterday?</em></p>
+
+  </div>
+</article>
+
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2026 &middot; All rights reserved</p>
+  </footer>
+
+  <script>
+    document.querySelector('.theme-toggle').addEventListener('click', function() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+    });
+  </script>
+</body>
+</html>

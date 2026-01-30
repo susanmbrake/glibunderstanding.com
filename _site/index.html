@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Essays and thoughts">
+  <title>Home | Essays</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script>
+    (function() {
+      const saved = localStorage.getItem('theme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-container">
+      <a href="/" class="nav-title">Essays</a>
+      <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/about/">About</a>
+        <button class="theme-toggle" aria-label="Toggle theme">
+          <span class="theme-toggle-light">Light</span>
+          <span class="theme-toggle-dark">Dark</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="home-intro">
+  <h1>Essays</h1>
+  <p>Thoughts and explorations on various topics.</p>
+</div>
+
+<ul class="essay-list">
+  
+  <li class="essay-item">
+    <a href="/essays/on-the-art-of-noticing/">
+      <h2 class="essay-title">On the Art of Noticing</h2>
+      <div class="essay-meta">
+        <span>January 12, 2026</span>
+        <span>3 min read</span>
+      </div>
+      
+      <p class="essay-excerpt">The world reveals itself to those who pay attention. But attention, like any skill, must be cultivated.</p>
+      
+    </a>
+  </li>
+  
+</ul>
+
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2026 &middot; All rights reserved</p>
+  </footer>
+
+  <script>
+    document.querySelector('.theme-toggle').addEventListener('click', function() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+    });
+  </script>
+</body>
+</html>

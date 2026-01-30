@@ -1,0 +1,29 @@
+---
+layout: base.njk
+title: Home
+---
+<div class="home-intro">
+  <h1>Essays</h1>
+  <p>Thoughts and explorations on various topics.</p>
+</div>
+
+<ul class="essay-list">
+  {% for essay in collections.essays %}
+  <li class="essay-item">
+    <a href="{{ essay.url }}">
+      <h2 class="essay-title">{{ essay.data.title }}</h2>
+      <div class="essay-meta">
+        <span>{{ essay.date | formatDate }}</span>
+        <span>{{ essay.templateContent | readingTime }}</span>
+      </div>
+      {% if essay.data.excerpt %}
+      <p class="essay-excerpt">{{ essay.data.excerpt }}</p>
+      {% endif %}
+    </a>
+  </li>
+  {% else %}
+  <li class="essay-item">
+    <p>No essays yet. Add a Markdown file to <code>src/essays/</code> to get started.</p>
+  </li>
+  {% endfor %}
+</ul>

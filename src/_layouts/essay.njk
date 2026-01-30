@@ -1,0 +1,16 @@
+---
+layout: base.njk
+---
+<article>
+  <header class="essay-header">
+    <h1>{{ title }}</h1>
+    <div class="essay-meta">
+      <span>{{ date | formatDate }}</span>
+      <span>{{ content | readingTime }}</span>
+    </div>
+  </header>
+
+  <div class="essay-content">
+    {{ content | safe }}
+  </div>
+</article>
