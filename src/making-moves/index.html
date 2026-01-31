@@ -362,7 +362,7 @@
 
     <div class="share-box" id="shareBox">
         <div class="share-text" id="shareText"></div>
-        <button class="primary" onclick="copyShare()">Copy Results</button>
+        <button class="primary" onclick="copyResults()">Copy Results</button>
         <button class="secondary solution-btn" id="solutionBtn" onclick="showSolution()">Show Solution</button>
         <div class="solution-status" id="solutionStatus"></div>
     </div>
@@ -609,7 +609,7 @@
                 const colorRemap = getColorRemap(cycle);
 
                 difficulty = currentPuzzle.difficulty || 1;
-                par = currentPuzzle.optimalMoves + difficulty;
+                par = Math.round(currentPuzzle.optimalMoves * 1.1);
                 initialGrid = currentPuzzle.grid.map(cell => {
                     if (cell === -1) return -1;
                     return colorRemap[cell];
@@ -677,7 +677,7 @@
             });
 
             difficulty = currentPuzzle.difficulty || 1;
-            par = currentPuzzle.optimalMoves + difficulty;
+            par = Math.round(currentPuzzle.optimalMoves * 1.1);
             initialGrid = [...grid];
             moves = 0;
             selectedCell = null;
@@ -1274,10 +1274,10 @@ ${resultLine}`;
             render();
         }
 
-        // Copy share text
-        function copyShare() {
+        // Copy results to clipboard
+        function copyResults() {
             const text = document.getElementById('shareText').textContent;
-            
+
             // Try modern clipboard API first
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(() => {
