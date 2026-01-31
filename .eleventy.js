@@ -1,6 +1,7 @@
 module.exports = function(eleventyConfig) {
   // Pass through static assets
   eleventyConfig.addPassthroughCopy("src/css");
+  eleventyConfig.addPassthroughCopy("src/making-moves");
 
   // Create a collection of essays sorted by date (newest first)
   eleventyConfig.addCollection("essays", function(collectionApi) {

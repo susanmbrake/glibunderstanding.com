@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Making Moves</title>
+    
+    <!-- Meta tags for link previews -->
+    <meta name="description" content="A daily puzzle game. Slide blocks to match colors and clear the board.">
+    <meta property="og:title" content="Making Moves">
+    <meta property="og:description" content="A daily puzzle game. Slide blocks to match colors and clear the board.">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Making Moves">
+    <meta name="twitter:description" content="A daily puzzle game. Slide blocks to match colors and clear the board.">
+    
+    <!-- Favicon: 2x2 grid of the 4 colors -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='1' y='1' width='14' height='14' rx='2' fill='%23ff6b6b'/><rect x='17' y='1' width='14' height='14' rx='2' fill='%234ecdc4'/><rect x='1' y='17' width='14' height='14' rx='2' fill='%23ffe66d'/><rect x='17' y='17' width='14' height='14' rx='2' fill='%23a66cff'/></svg>">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #eee;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 2.5rem;
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 32px;
+            margin-bottom: 20px;
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .game-container {
+            position: relative;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            padding: 16px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .cell {
+            width: 56px;
+            height: 56px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cell.empty {
+            background: rgba(255,255,255,0.03);
+            border: 2px dashed rgba(255,255,255,0.1);
+            cursor: default;
+        }
+        
+        .cell.empty.valid-destination {
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.5);
+            cursor: pointer;
+            animation: pulse-destination 1s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-destination {
+            0%, 100% { background: rgba(255,255,255,0.1); }
+            50% { background: rgba(255,255,255,0.25); }
+        }
+
+        .cell.block {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+
+        .cell.block:hover {
+            transform: scale(1.05);
+            z-index: 10;
+        }
+
+        .cell.selected {
+            transform: scale(1.1);
+            z-index: 20;
+            box-shadow: 0 0 0 3px #fff, 0 8px 24px rgba(0,0,0,0.4);
+        }
+
+        .cell.hint {
+            animation: pulse 0.8s ease-in-out infinite;
+        }
+
+        .cell.swappable {
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Block colors - vibrant and distinct */
+        .cell.color-0 { background: linear-gradient(135deg, #ff6b6b, #ee5a5a); } /* Red/Coral */
+        .cell.color-1 { background: linear-gradient(135deg, #4ecdc4, #3dbdb5); } /* Teal */
+        .cell.color-2 { background: linear-gradient(135deg, #ffe66d, #ffd93d); } /* Yellow */
+        .cell.color-3 { background: linear-gradient(135deg, #a66cff, #9654f4); } /* Purple */
+
+        .message {
+            margin-top: 20px;
+            padding: 12px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .message.success {
+            background: rgba(78, 205, 196, 0.2);
+            color: #4ecdc4;
+        }
+
+        .message.warning {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        button {
+            font-family: 'DM Sans', sans-serif;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        button.primary {
+            background: #4ecdc4;
+            color: #1a1a2e;
+        }
+
+        button.primary:hover {
+            background: #5dddd4;
+            transform: translateY(-1px);
+        }
+
+        button.secondary {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        button.secondary:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        button:disabled:hover {
+            transform: none;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .share-box {
+            margin-top: 24px;
+            padding: 16px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            text-align: center;
+            display: none;
+        }
+
+        .share-box.visible {
+            display: block;
+        }
+
+        .solution-btn {
+            margin-top: 12px;
+        }
+
+        .solution-status {
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .share-text {
+            font-family: monospace;
+            font-size: 1rem;
+            line-height: 1.4;
+            margin-bottom: 12px;
+            white-space: pre-line;
+        }
+
+        .instructions {
+            margin-top: 32px;
+            padding: 20px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            max-width: 340px;
+            font-size: 0.85rem;
+            color: #aaa;
+            line-height: 1.6;
+        }
+
+        .instructions h3 {
+            color: #fff;
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+        }
+
+        .instructions ul {
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+
+        /* Animation for blocks disappearing */
+        @keyframes pop {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .cell.popping {
+            animation: pop 0.3s ease-out forwards;
+        }
+
+        /* Animation for blocks falling */
+        @keyframes fall {
+            from { transform: translateY(-64px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .cell.falling {
+            animation: fall 0.25s ease-out;
+        }
+
+        /* Confetti celebration */
+        .confetti-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 100;
+        }
+
+        .confetti-particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Making Moves</h1>
+        <p class="subtitle">Puzzle #<span id="puzzleNum">1</span> • Clear the board</p>
+    </header>
+
+    <div class="stats-bar">
+        <div class="stat">
+            <div class="stat-value" id="moves">0</div>
+            <div class="stat-label">Moves</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" id="par">12</div>
+            <div class="stat-label">Par</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" id="remaining">20</div>
+            <div class="stat-label">Blocks</div>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="message" id="message">Click a block to select it</div>
+
+    <div class="controls">
+        <button class="secondary" id="undoBtn" onclick="undoMove()" disabled>Undo</button>
+        <button class="secondary" id="giveUpBtn" onclick="giveUp()">Give Up</button>
+    </div>
+
+    <div class="share-box" id="shareBox">
+        <div class="share-text" id="shareText"></div>
+        <button class="primary" onclick="copyShare()">Copy Results</button>
+        <button class="secondary solution-btn" id="solutionBtn" onclick="showSolution()">Show Solution</button>
+        <div class="solution-status" id="solutionStatus"></div>
+    </div>
+
+    <div class="instructions">
+        <h3>How to Play</h3>
+        <ul>
+            <li>Click a block to select it</li>
+            <li>Blocks <strong>slide</strong> in a straight line until they hit another block or the edge</li>
+            <li>When 3+ blocks of the same color touch, they disappear</li>
+            <li>Blocks fall down when there's empty space below</li>
+            <li>You get <strong>one undo</strong> per game (costs 1 move)</li>
+            <li>Clear all blocks to win — try to beat par!</li>
+        </ul>
+    </div>
+
+    <script>
+        const GRID_SIZE = 5;
+        const NUM_COLORS = 4;
+        const COLOR_EMOJIS = ['🟥', '🟦', '🟨', '🟪'];
+        
+        // Curated puzzles with par values (97 puzzles)
+        const PUZZLES = [
+    {"id":1,"grid":[1,0,3,3,1,0,2,0,2,1,2,1,0,2,3,3,-1,1,3,0,3,0,1,2,2],"optimalMoves":8,"difficulty":1,"solution":[{"from":11,"to":16,"score":1600},{"from":10,"to":12,"score":1600},{"from":5,"to":8,"score":1300},{"from":16,"to":18,"score":60},{"from":10,"to":14,"score":1300},{"from":22,"to":2,"score":40},{"from":21,"to":22,"score":1300},{"from":22,"to":21,"score":1300}]},
+    {"id":2,"grid":[0,1,3,2,3,0,3,2,1,0,3,0,2,1,2,1,1,0,2,-1,0,3,3,1,2],"optimalMoves":8,"difficulty":1,"solution":[{"from":18,"to":19,"score":1900},{"from":12,"to":14,"score":80},{"from":6,"to":9,"score":1300},{"from":17,"to":19,"score":80},{"from":11,"to":14,"score":1600},{"from":15,"to":19,"score":40},{"from":20,"to":15,"score":1300},{"from":24,"to":23,"score":1300}]},
+    {"id":3,"grid":[3,3,0,0,1,2,0,-1,2,2,1,1,3,3,1,0,2,0,2,2,1,1,0,3,3],"optimalMoves":7,"difficulty":1,"solution":[{"from":6,"to":7,"score":1300},{"from":6,"to":7,"score":1600},{"from":9,"to":6,"score":1300},{"from":14,"to":11,"score":1300},{"from":15,"to":16,"score":1300},{"from":19,"to":16,"score":1300},{"from":20,"to":22,"score":1300}]},
+    {"id":4,"grid":[1,1,2,0,0,3,0,1,2,2,2,0,3,3,1,3,3,1,1,0,-1,2,3,0,2],"optimalMoves":9,"difficulty":1,"solution":[{"from":21,"to":20,"score":140},{"from":22,"to":21,"score":1600},{"from":5,"to":7,"score":1300},{"from":10,"to":12,"score":1300},{"from":18,"to":17,"score":60},{"from":19,"to":18,"score":1300},{"from":19,"to":18,"score":1300},{"from":19,"to":17,"score":1300},{"from":24,"to":21,"score":1300}]},
+    {"id":5,"grid":[3,0,1,-1,1,2,3,1,2,3,0,2,0,1,3,0,3,2,3,2,1,0,2,0,1],"optimalMoves":7,"difficulty":1,"solution":[{"from":4,"to":3,"score":1300},{"from":12,"to":2,"score":80},{"from":11,"to":12,"score":1900},{"from":23,"to":22,"score":1300},{"from":20,"to":22,"score":1300},{"from":20,"to":22,"score":1300},{"from":20,"to":23,"score":1300}]},
+    {"id":6,"grid":[1,3,1,0,2,0,2,1,0,3,3,2,0,-1,2,0,3,2,1,0,3,1,1,2,3],"optimalMoves":9,"difficulty":2,"solution":[{"from":12,"to":13,"score":1300},{"from":14,"to":13,"score":60},{"from":13,"to":3,"score":80},{"from":18,"to":8,"score":1600},{"from":9,"to":7,"score":1600},{"from":19,"to":16,"score":1300},{"from":15,"to":18,"score":40},{"from":18,"to":23,"score":1300},{"from":20,"to":23,"score":1300}]},
+    {"id":7,"grid":[2,3,0,2,1,3,2,1,1,2,1,0,2,0,3,0,2,-1,0,3,0,3,3,1,1],"optimalMoves":7,"difficulty":2,"solution":[{"from":12,"to":17,"score":140},{"from":11,"to":12,"score":2200},{"from":17,"to":16,"score":1300},{"from":15,"to":18,"score":1300},{"from":15,"to":18,"score":1300},{"from":22,"to":21,"score":20},{"from":24,"to":22,"score":1300}]},
+    {"id":8,"grid":[2,1,1,2,0,3,3,0,0,2,2,2,3,3,1,0,1,2,0,1,3,3,0,1,-1],"optimalMoves":9,"difficulty":2,"solution":[{"from":23,"to":24,"score":1300},{"from":13,"to":14,"score":120},{"from":12,"to":13,"score":140},{"from":17,"to":12,"score":1600},{"from":16,"to":17,"score":100},{"from":21,"to":16,"score":1600},{"from":20,"to":22,"score":1300},{"from":15,"to":18,"score":1300},{"from":20,"to":23,"score":1300}]},
+    {"id":9,"grid":[1,2,0,1,0,1,-1,2,1,0,3,1,2,0,3,3,1,0,3,0,2,2,3,2,3],"optimalMoves":9,"difficulty":2,"solution":[{"from":11,"to":6,"score":1900},{"from":18,"to":17,"score":100},{"from":10,"to":12,"score":1300},{"from":23,"to":22,"score":1300},{"from":21,"to":22,"score":1300},{"from":24,"to":21,"score":40},{"from":19,"to":24,"score":40},{"from":14,"to":10,"score":40},{"from":24,"to":14,"score":1600}]},
+    {"id":10,"grid":[1,2,3,3,0,3,1,1,2,1,0,3,3,2,0,2,0,0,-1,2,2,1,3,0,1],"optimalMoves":7,"difficulty":2,"solution":[{"from":23,"to":18,"score":2500},{"from":15,"to":18,"score":1300},{"from":14,"to":10,"score":20},{"from":9,"to":14,"score":40},{"from":20,"to":23,"score":40},{"from":23,"to":3,"score":40},{"from":24,"to":20,"score":1600}]},
+    {"id":11,"grid":[1,2,1,-1,0,3,0,2,0,2,1,3,2,1,3,0,3,1,3,1,2,2,0,3,0],"optimalMoves":8,"difficulty":2,"solution":[{"from":8,"to":3,"score":100},{"from":9,"to":8,"score":1600},{"from":16,"to":17,"score":1600},{"from":16,"to":18,"score":40},{"from":14,"to":12,"score":60},{"from":15,"to":17,"score":1600},{"from":15,"to":18,"score":1300},{"from":24,"to":21,"score":1300}]},
+    {"id":12,"grid":[2,0,3,2,3,2,3,2,1,2,1,0,0,3,0,2,3,-1,1,0,1,1,0,1,3],"optimalMoves":15,"difficulty":2,"solution":[{"from":22,"to":17,"score":1600},{"from":3,"to":1,"score":1300},{"from":8,"to":5,"score":80},{"from":13,"to":3,"score":100},{"from":10,"to":13,"score":1300},{"from":16,"to":18,"score":1300},{"from":15,"to":18,"score":60},{"from":10,"to":15,"score":1300},{"from":14,"to":10,"score":40},{"from":10,"to":14,"score":40},{"from":18,"to":3,"score":20},{"from":22,"to":2,"score":40},{"from":14,"to":10,"score":40},{"from":19,"to":4,"score":1300},{"from":20,"to":22,"score":1300}]},
+    {"id":13,"grid":[3,0,1,1,0,2,0,3,3,2,3,2,1,0,0,1,3,-1,1,2,3,0,2,1,2],"optimalMoves":9,"difficulty":2,"solution":[{"from":12,"to":17,"score":1600},{"from":14,"to":12,"score":1600},{"from":16,"to":1,"score":40},{"from":15,"to":16,"score":1300},{"from":22,"to":2,"score":40},{"from":21,"to":22,"score":1300},{"from":10,"to":14,"score":40},{"from":5,"to":10,"score":1300},{"from":24,"to":23,"score":1300}]},
+    {"id":14,"grid":[0,1,3,3,2,2,0,1,0,1,2,3,2,3,0,3,1,0,1,0,3,-1,2,1,2],"optimalMoves":7,"difficulty":2,"solution":[{"from":22,"to":21,"score":100},{"from":17,"to":22,"score":100},{"from":16,"to":17,"score":2500},{"from":12,"to":13,"score":1300},{"from":19,"to":18,"score":20},{"from":22,"to":23,"score":40},{"from":14,"to":19,"score":1600}]},
+    {"id":15,"grid":[2,1,3,0,0,0,2,3,2,1,1,3,-1,1,2,0,1,2,3,2,1,3,3,0,0],"optimalMoves":9,"difficulty":2,"solution":[{"from":11,"to":12,"score":1300},{"from":11,"to":12,"score":100},{"from":8,"to":7,"score":1600},{"from":18,"to":16,"score":1300},{"from":13,"to":11,"score":1300},{"from":18,"to":16,"score":40},{"from":16,"to":21,"score":60},{"from":15,"to":18,"score":1300},{"from":19,"to":15,"score":1600}]},
+    {"id":16,"grid":[2,2,3,0,1,3,0,0,1,0,3,1,3,1,3,2,0,0,3,1,1,2,-1,2,2],"optimalMoves":10,"difficulty":2,"solution":[{"from":21,"to":22,"score":1300},{"from":6,"to":1,"score":100},{"from":7,"to":6,"score":1300},{"from":8,"to":7,"score":1600},{"from":16,"to":15,"score":60},{"from":13,"to":10,"score":1300},{"from":18,"to":3,"score":20},{"from":17,"to":18,"score":1300},{"from":19,"to":15,"score":40},{"from":15,"to":20,"score":1600}]},
+    {"id":17,"grid":[0,3,0,3,0,0,1,2,2,3,1,2,-1,3,2,3,1,3,0,1,1,2,1,0,2],"optimalMoves":7,"difficulty":2,"solution":[{"from":11,"to":12,"score":2500},{"from":9,"to":5,"score":1300},{"from":19,"to":15,"score":20},{"from":14,"to":19,"score":40},{"from":22,"to":2,"score":40},{"from":21,"to":23,"score":1300},{"from":22,"to":21,"score":1300}]},
+    {"id":18,"grid":[2,0,3,3,0,1,3,1,2,0,0,2,-1,0,3,3,2,1,1,2,1,1,2,3,0],"optimalMoves":8,"difficulty":2,"solution":[{"from":7,"to":12,"score":1300},{"from":13,"to":12,"score":1600},{"from":18,"to":17,"score":1600},{"from":20,"to":21,"score":60},{"from":14,"to":10,"score":60},{"from":18,"to":15,"score":60},{"from":19,"to":16,"score":1600},{"from":23,"to":21,"score":1300}]},
+    {"id":19,"grid":[0,2,0,2,1,3,3,0,-1,3,0,2,1,0,2,1,2,0,3,1,3,1,3,2,1],"optimalMoves":8,"difficulty":2,"solution":[{"from":13,"to":8,"score":1300},{"from":9,"to":7,"score":1600},{"from":15,"to":16,"score":80},{"from":12,"to":11,"score":1300},{"from":17,"to":16,"score":1300},{"from":18,"to":15,"score":60},{"from":23,"to":18,"score":1600},{"from":22,"to":21,"score":1300}]},
+    {"id":20,"grid":[0,0,1,2,3,2,1,3,0,3,-1,3,1,2,2,1,0,1,0,0,1,3,2,2,3],"optimalMoves":8,"difficulty":2,"solution":[{"from":11,"to":10,"score":140},{"from":6,"to":11,"score":1300},{"from":8,"to":6,"score":1600},{"from":17,"to":16,"score":100},{"from":10,"to":11,"score":1300},{"from":17,"to":16,"score":1300},{"from":15,"to":17,"score":1600},{"from":20,"to":21,"score":1300}]},
+    {"id":21,"grid":[2,0,1,-1,1,2,3,1,2,2,3,0,3,0,0,2,1,1,3,1,0,3,3,0,2],"optimalMoves":15,"difficulty":3,"solution":[{"from":4,"to":3,"score":1300},{"from":6,"to":7,"score":120},{"from":11,"to":6,"score":140},{"from":10,"to":11,"score":1600},{"from":11,"to":12,"score":1300},{"from":11,"to":12,"score":60},{"from":12,"to":2,"score":60},{"from":2,"to":0,"score":60},{"from":0,"to":15,"score":80},{"from":14,"to":4,"score":60},{"from":13,"to":3,"score":80},{"from":18,"to":8,"score":80},{"from":19,"to":18,"score":1300},{"from":18,"to":16,"score":1600},{"from":23,"to":21,"score":1300}]},
+    {"id":22,"grid":[-1,3,2,3,3,3,0,3,0,2,1,0,2,0,1,2,2,0,3,0,1,1,2,1,1],"optimalMoves":11,"difficulty":3,"solution":[{"from":5,"to":0,"score":140},{"from":10,"to":5,"score":140},{"from":15,"to":10,"score":120},{"from":16,"to":15,"score":140},{"from":17,"to":16,"score":1300},{"from":0,"to":2,"score":1300},{"from":12,"to":11,"score":120},{"from":7,"to":12,"score":1300},{"from":18,"to":17,"score":1900},{"from":15,"to":19,"score":40},{"from":10,"to":14,"score":1600}]},
+    {"id":23,"grid":[2,2,-1,0,3,1,0,3,0,3,3,1,1,2,1,0,2,3,0,2,1,2,3,1,0],"optimalMoves":13,"difficulty":3,"solution":[{"from":7,"to":2,"score":120},{"from":6,"to":7,"score":1300},{"from":7,"to":8,"score":1300},{"from":6,"to":1,"score":80},{"from":5,"to":9,"score":100},{"from":13,"to":3,"score":100},{"from":14,"to":13,"score":1600},{"from":10,"to":12,"score":1300},{"from":15,"to":17,"score":20},{"from":10,"to":12,"score":40},{"from":23,"to":21,"score":60},{"from":24,"to":22,"score":1600},{"from":24,"to":22,"score":1300}]},
+    {"id":24,"grid":[2,0,3,1,3,3,2,2,3,2,1,0,0,-1,0,1,2,3,1,0,3,1,1,0,2],"optimalMoves":8,"difficulty":3,"solution":[{"from":14,"to":13,"score":1900},{"from":18,"to":17,"score":1300},{"from":18,"to":16,"score":1300},{"from":23,"to":22,"score":40},{"from":19,"to":16,"score":1300},{"from":10,"to":0,"score":40},{"from":14,"to":10,"score":1300},{"from":20,"to":23,"score":1300}]},
+    {"id":25,"grid":[0,3,1,2,1,3,0,2,3,3,0,3,-1,2,1,1,0,0,1,3,2,2,1,0,2],"optimalMoves":7,"difficulty":3,"solution":[{"from":13,"to":12,"score":80},{"from":18,"to":13,"score":100},{"from":23,"to":18,"score":1900},{"from":9,"to":7,"score":1600},{"from":16,"to":18,"score":1300},{"from":24,"to":22,"score":1300},{"from":20,"to":23,"score":1300}]},
+    {"id":26,"grid":[2,0,3,1,2,3,2,0,1,0,1,0,2,0,1,3,3,1,-1,0,1,2,3,2,3],"optimalMoves":13,"difficulty":3,"solution":[{"from":13,"to":18,"score":60},{"from":14,"to":13,"score":1600},{"from":12,"to":14,"score":40},{"from":7,"to":12,"score":60},{"from":6,"to":9,"score":1600},{"from":12,"to":11,"score":1300},{"from":17,"to":16,"score":1300},{"from":23,"to":3,"score":0},{"from":22,"to":23,"score":20},{"from":21,"to":22,"score":20},{"from":22,"to":2,"score":40},{"from":20,"to":22,"score":1300},{"from":20,"to":21,"score":1300}]},
+    {"id":27,"grid":[2,0,0,2,1,1,3,3,2,3,2,2,-1,3,2,0,3,1,0,1,1,0,0,1,3],"optimalMoves":13,"difficulty":3,"solution":[{"from":13,"to":12,"score":1600},{"from":12,"to":13,"score":60},{"from":6,"to":8,"score":1300},{"from":19,"to":18,"score":1300},{"from":16,"to":18,"score":1300},{"from":16,"to":1,"score":40},{"from":24,"to":4,"score":40},{"from":5,"to":9,"score":60},{"from":10,"to":5,"score":1300},{"from":15,"to":0,"score":40},{"from":21,"to":1,"score":40},{"from":22,"to":2,"score":1300},{"from":20,"to":23,"score":1300}]},
+    {"id":28,"grid":[3,0,1,1,2,2,0,3,2,0,0,3,2,3,3,-1,1,1,2,0,1,0,3,1,2],"optimalMoves":7,"difficulty":3,"solution":[{"from":20,"to":15,"score":2200},{"from":14,"to":12,"score":1300},{"from":16,"to":18,"score":20},{"from":18,"to":23,"score":40},{"from":19,"to":16,"score":1300},{"from":15,"to":18,"score":1300},{"from":20,"to":23,"score":1300}]},
+    {"id":29,"grid":[2,1,0,1,3,2,1,2,-1,2,0,3,3,0,0,2,0,2,1,1,0,3,1,3,3],"optimalMoves":14,"difficulty":3,"solution":[{"from":9,"to":8,"score":140},{"from":4,"to":9,"score":140},{"from":3,"to":4,"score":140},{"from":2,"to":3,"score":140},{"from":1,"to":2,"score":120},{"from":6,"to":1,"score":140},{"from":5,"to":6,"score":1600},{"from":14,"to":13,"score":1600},{"from":5,"to":9,"score":40},{"from":9,"to":19,"score":40},{"from":17,"to":18,"score":60},{"from":22,"to":17,"score":1300},{"from":21,"to":22,"score":1300},{"from":15,"to":19,"score":1600}]},
+    {"id":30,"grid":[2,2,1,0,1,1,3,2,0,3,0,1,0,1,3,0,3,2,-1,1,2,0,2,3,3],"optimalMoves":10,"difficulty":3,"solution":[{"from":19,"to":18,"score":140},{"from":14,"to":19,"score":2200},{"from":16,"to":19,"score":60},{"from":21,"to":16,"score":1300},{"from":16,"to":18,"score":1300},{"from":16,"to":1,"score":20},{"from":10,"to":0,"score":40},{"from":15,"to":19,"score":40},{"from":20,"to":5,"score":1300},{"from":24,"to":23,"score":1300}]},
+    {"id":31,"grid":[1,0,2,3,0,2,3,1,2,3,3,0,1,0,2,1,0,2,2,1,3,-1,0,3,1],"optimalMoves":9,"difficulty":3,"solution":[{"from":22,"to":21,"score":1300},{"from":5,"to":6,"score":1300},{"from":5,"to":7,"score":1300},{"from":18,"to":17,"score":80},{"from":13,"to":11,"score":100},{"from":23,"to":13,"score":1300},{"from":14,"to":12,"score":1300},{"from":14,"to":12,"score":1300},{"from":15,"to":18,"score":1600}]},
+    {"id":32,"grid":[0,0,2,1,3,3,-1,1,0,1,3,2,2,1,3,1,1,0,2,3,0,2,3,2,0],"optimalMoves":13,"difficulty":3,"solution":[{"from":7,"to":6,"score":120},{"from":2,"to":7,"score":1600},{"from":8,"to":6,"score":100},{"from":6,"to":11,"score":1900},{"from":24,"to":4,"score":40},{"from":5,"to":9,"score":60},{"from":15,"to":17,"score":60},{"from":21,"to":1,"score":60},{"from":20,"to":15,"score":60},{"from":1,"to":3,"score":60},{"from":3,"to":13,"score":1300},{"from":15,"to":16,"score":1300},{"from":20,"to":23,"score":1300}]},
+    {"id":33,"grid":[2,-1,0,0,3,1,2,3,2,2,0,3,0,1,3,0,3,0,2,2,1,1,3,1,1],"optimalMoves":8,"difficulty":3,"solution":[{"from":0,"to":1,"score":180},{"from":5,"to":0,"score":180},{"from":6,"to":5,"score":160},{"from":7,"to":6,"score":1600},{"from":16,"to":17,"score":1600},{"from":18,"to":16,"score":1300},{"from":15,"to":18,"score":1600},{"from":22,"to":23,"score":1300}]},
+    {"id":34,"grid":[0,2,3,3,0,1,-1,2,1,1,1,0,3,3,0,0,3,2,1,1,2,0,2,3,2],"optimalMoves":8,"difficulty":3,"solution":[{"from":7,"to":6,"score":140},{"from":2,"to":7,"score":1600},{"from":17,"to":2,"score":1300},{"from":16,"to":17,"score":1600},{"from":14,"to":11,"score":1300},{"from":15,"to":18,"score":1300},{"from":24,"to":23,"score":20},{"from":20,"to":21,"score":1300}]},
+    {"id":35,"grid":[2,-1,2,0,3,2,3,3,0,2,3,2,0,1,1,1,0,1,3,2,1,0,1,0,3],"optimalMoves":12,"difficulty":3,"solution":[{"from":2,"to":1,"score":1300},{"from":6,"to":5,"score":120},{"from":7,"to":6,"score":1300},{"from":12,"to":2,"score":1300},{"from":13,"to":12,"score":1300},{"from":23,"to":22,"score":1300},{"from":14,"to":10,"score":1300},{"from":21,"to":1,"score":40},{"from":1,"to":4,"score":40},{"from":9,"to":5,"score":40},{"from":4,"to":9,"score":1300},{"from":20,"to":22,"score":1300}]},
+    {"id":36,"grid":[3,0,3,0,0,1,0,1,2,3,0,3,2,3,0,2,1,1,-1,1,2,3,2,2,1],"optimalMoves":8,"difficulty":3,"solution":[{"from":19,"to":18,"score":2200},{"from":18,"to":16,"score":1300},{"from":14,"to":10,"score":40},{"from":9,"to":14,"score":1300},{"from":20,"to":21,"score":40},{"from":23,"to":3,"score":40},{"from":24,"to":23,"score":1300},{"from":23,"to":21,"score":1300}]},
+    {"id":37,"grid":[0,3,0,3,1,3,2,0,1,0,2,3,2,1,0,2,1,0,2,2,1,3,1,3,-1],"optimalMoves":7,"difficulty":3,"solution":[{"from":23,"to":24,"score":100},{"from":22,"to":23,"score":100},{"from":17,"to":22,"score":100},{"from":12,"to":17,"score":1900},{"from":21,"to":22,"score":1900},{"from":15,"to":18,"score":1300},{"from":24,"to":22,"score":1300}]},
+    {"id":38,"grid":[0,3,0,3,1,2,2,0,2,0,1,0,-1,3,1,2,3,1,1,2,1,3,2,3,0],"optimalMoves":15,"difficulty":3,"solution":[{"from":11,"to":12,"score":1300},{"from":3,"to":1,"score":60},{"from":13,"to":12,"score":60},{"from":14,"to":13,"score":1600},{"from":18,"to":17,"score":1300},{"from":23,"to":22,"score":1300},{"from":19,"to":16,"score":20},{"from":24,"to":19,"score":40},{"from":0,"to":4,"score":40},{"from":10,"to":13,"score":40},{"from":5,"to":10,"score":1300},{"from":23,"to":21,"score":40},{"from":9,"to":4,"score":40},{"from":14,"to":10,"score":40},{"from":4,"to":14,"score":1600}]},
+    {"id":39,"grid":[2,2,3,0,3,0,1,1,-1,1,0,3,2,3,2,2,1,0,0,1,0,3,3,1,2],"optimalMoves":8,"difficulty":3,"solution":[{"from":9,"to":8,"score":1300},{"from":6,"to":1,"score":80},{"from":7,"to":6,"score":100},{"from":12,"to":2,"score":1300},{"from":13,"to":12,"score":1600},{"from":16,"to":18,"score":1300},{"from":15,"to":18,"score":1600},{"from":24,"to":23,"score":1300}]},
+    {"id":40,"grid":[3,2,3,0,3,1,0,2,0,3,0,1,0,2,1,0,3,2,1,2,1,-1,3,1,2],"optimalMoves":7,"difficulty":3,"solution":[{"from":16,"to":21,"score":120},{"from":17,"to":16,"score":120},{"from":12,"to":17,"score":120},{"from":13,"to":12,"score":140},{"from":14,"to":13,"score":2800},{"from":21,"to":23,"score":1300},{"from":20,"to":23,"score":1300}]},
+    {"id":41,"grid":[3,0,0,3,1,0,-1,1,0,1,1,3,0,2,2,2,1,1,3,3,0,2,3,2,2],"optimalMoves":15,"difficulty":3,"solution":[{"from":5,"to":6,"score":1300},{"from":3,"to":0,"score":120},{"from":11,"to":1,"score":1300},{"from":10,"to":11,"score":1300},{"from":15,"to":16,"score":100},{"from":8,"to":5,"score":100},{"from":5,"to":15,"score":120},{"from":12,"to":2,"score":120},{"from":2,"to":3,"score":1300},{"from":17,"to":2,"score":100},{"from":2,"to":4,"score":100},{"from":22,"to":2,"score":100},{"from":21,"to":22,"score":1600},{"from":19,"to":16,"score":1300},{"from":21,"to":22,"score":1300}]},
+    {"id":42,"grid":[1,0,2,2,1,3,1,3,0,2,3,0,1,0,2,2,3,0,2,0,3,-1,1,3,1],"optimalMoves":8,"difficulty":3,"solution":[{"from":16,"to":21,"score":100},{"from":11,"to":16,"score":120},{"from":6,"to":11,"score":140},{"from":7,"to":6,"score":1900},{"from":15,"to":16,"score":1900},{"from":22,"to":2,"score":40},{"from":23,"to":22,"score":1300},{"from":22,"to":23,"score":1300}]},
+    {"id":43,"grid":[2,1,2,1,0,3,0,-1,1,3,1,0,3,2,1,0,1,3,2,0,0,3,2,3,2],"optimalMoves":12,"difficulty":3,"solution":[{"from":2,"to":7,"score":100},{"from":1,"to":2,"score":1300},{"from":4,"to":1,"score":1300},{"from":7,"to":8,"score":1300},{"from":9,"to":6,"score":60},{"from":6,"to":11,"score":1300},{"from":14,"to":11,"score":1300},{"from":19,"to":16,"score":1300},{"from":15,"to":19,"score":40},{"from":23,"to":3,"score":40},{"from":22,"to":23,"score":1300},{"from":23,"to":22,"score":1300}]},
+    {"id":44,"grid":[0,0,1,1,3,3,3,2,0,2,1,1,2,1,1,-1,2,3,0,2,3,0,3,0,2],"optimalMoves":8,"difficulty":3,"solution":[{"from":20,"to":15,"score":180},{"from":21,"to":20,"score":180},{"from":16,"to":21,"score":180},{"from":15,"to":16,"score":2500},{"from":16,"to":19,"score":20},{"from":15,"to":18,"score":40},{"from":21,"to":22,"score":1300},{"from":15,"to":18,"score":1600}]},
+    {"id":45,"grid":[0,0,-1,2,1,1,1,0,3,2,3,3,0,2,1,1,2,1,0,3,2,3,0,3,2],"optimalMoves":11,"difficulty":3,"solution":[{"from":7,"to":2,"score":1300},{"from":12,"to":2,"score":40},{"from":17,"to":7,"score":1600},{"from":13,"to":12,"score":1300},{"from":16,"to":17,"score":1300},{"from":19,"to":16,"score":20},{"from":23,"to":22,"score":1300},{"from":20,"to":23,"score":20},{"from":19,"to":16,"score":40},{"from":14,"to":19,"score":1300},{"from":24,"to":22,"score":1300}]},
+    {"id":46,"grid":[0,0,3,1,2,1,2,0,2,3,1,3,1,2,0,3,2,0,1,-1,1,3,0,2,3],"optimalMoves":8,"difficulty":3,"solution":[{"from":18,"to":19,"score":80},{"from":23,"to":18,"score":1300},{"from":19,"to":18,"score":80},{"from":12,"to":13,"score":1600},{"from":24,"to":23,"score":1300},{"from":19,"to":17,"score":1600},{"from":19,"to":17,"score":1300},{"from":24,"to":22,"score":1300}]},
+    {"id":47,"grid":[3,0,0,1,3,2,1,2,-1,2,1,3,1,2,0,2,1,3,1,0,0,0,2,3,3],"optimalMoves":7,"difficulty":3,"solution":[{"from":7,"to":8,"score":1600},{"from":12,"to":13,"score":1600},{"from":17,"to":19,"score":20},{"from":11,"to":14,"score":40},{"from":6,"to":11,"score":1600},{"from":10,"to":14,"score":1300},{"from":22,"to":21,"score":1300}]},
+    {"id":48,"grid":[0,1,3,0,3,1,3,0,3,0,0,3,1,2,0,2,1,3,1,2,2,-1,2,2,1],"optimalMoves":15,"difficulty":3,"solution":[{"from":20,"to":21,"score":1600},{"from":7,"to":9,"score":1300},{"from":6,"to":9,"score":60},{"from":5,"to":0,"score":60},{"from":9,"to":5,"score":80},{"from":0,"to":4,"score":80},{"from":12,"to":2,"score":80},{"from":2,"to":3,"score":100},{"from":17,"to":2,"score":100},{"from":2,"to":0,"score":1300},{"from":16,"to":17,"score":80},{"from":11,"to":12,"score":1300},{"from":21,"to":22,"score":1300},{"from":15,"to":17,"score":1300},{"from":20,"to":22,"score":1300}]},
+    {"id":49,"grid":[2,1,0,3,1,0,0,1,2,3,2,2,0,1,3,1,0,3,3,1,3,-1,0,2,2],"optimalMoves":7,"difficulty":3,"solution":[{"from":22,"to":21,"score":120},{"from":23,"to":22,"score":100},{"from":24,"to":23,"score":120},{"from":19,"to":24,"score":120},{"from":18,"to":19,"score":2800},{"from":21,"to":1,"score":40},{"from":20,"to":21,"score":1600}]},
+    {"id":50,"grid":[2,2,3,3,2,1,1,0,2,3,0,0,1,1,-1,2,1,3,0,3,0,0,1,2,3],"optimalMoves":8,"difficulty":3,"solution":[{"from":9,"to":14,"score":1300},{"from":8,"to":9,"score":140},{"from":9,"to":19,"score":1300},{"from":13,"to":3,"score":100},{"from":7,"to":9,"score":100},{"from":12,"to":7,"score":1600},{"from":18,"to":17,"score":1600},{"from":15,"to":19,"score":1600}]},
+    {"id":51,"grid":[1,0,3,1,1,3,2,1,3,0,3,1,3,0,2,2,0,1,0,2,2,-1,0,2,3],"optimalMoves":13,"difficulty":3,"solution":[{"from":16,"to":21,"score":120},{"from":11,"to":16,"score":140},{"from":12,"to":11,"score":2200},{"from":22,"to":2,"score":60},{"from":8,"to":5,"score":60},{"from":2,"to":0,"score":80},{"from":20,"to":22,"score":80},{"from":22,"to":2,"score":1300},{"from":9,"to":4,"score":60},{"from":13,"to":3,"score":60},{"from":18,"to":8,"score":1300},{"from":23,"to":3,"score":40},{"from":24,"to":21,"score":1600}]},
+    {"id":52,"grid":[0,0,3,1,1,-1,2,1,2,3,2,1,0,2,3,0,2,3,0,2,0,3,1,1,3],"optimalMoves":10,"difficulty":3,"solution":[{"from":10,"to":5,"score":140},{"from":11,"to":10,"score":140},{"from":16,"to":11,"score":1600},{"from":17,"to":16,"score":100},{"from":12,"to":10,"score":120},{"from":7,"to":17,"score":2200},{"from":18,"to":19,"score":40},{"from":23,"to":3,"score":40},{"from":20,"to":23,"score":1300},{"from":23,"to":21,"score":1300}]},
+    {"id":53,"grid":[1,2,3,2,2,1,0,3,1,1,0,1,2,2,3,3,3,0,-1,0,0,0,3,2,1],"optimalMoves":8,"difficulty":3,"solution":[{"from":23,"to":18,"score":1300},{"from":14,"to":13,"score":1300},{"from":1,"to":4,"score":100},{"from":18,"to":3,"score":1300},{"from":14,"to":12,"score":100},{"from":17,"to":18,"score":120},{"from":22,"to":17,"score":2200},{"from":21,"to":22,"score":1300}]},
+    {"id":54,"grid":[0,-1,0,1,3,0,3,1,0,2,3,0,3,3,1,2,0,1,1,2,2,1,2,3,2],"optimalMoves":8,"difficulty":3,"solution":[{"from":2,"to":1,"score":1300},{"from":7,"to":2,"score":120},{"from":6,"to":7,"score":1600},{"from":18,"to":17,"score":1300},{"from":18,"to":16,"score":60},{"from":14,"to":11,"score":1600},{"from":22,"to":21,"score":1300},{"from":20,"to":22,"score":1300}]},
+    {"id":55,"grid":[0,1,2,3,0,1,0,2,3,2,1,2,1,0,3,3,1,2,2,0,1,-1,0,3,3],"optimalMoves":10,"difficulty":3,"solution":[{"from":16,"to":21,"score":120},{"from":11,"to":16,"score":1900},{"from":14,"to":13,"score":1600},{"from":17,"to":19,"score":40},{"from":19,"to":4,"score":40},{"from":16,"to":19,"score":40},{"from":15,"to":18,"score":1300},{"from":19,"to":16,"score":1300},{"from":22,"to":23,"score":20},{"from":20,"to":22,"score":1300}]},
+    {"id":56,"grid":[1,0,1,3,0,-1,2,1,2,1,0,3,2,1,2,2,3,0,3,3,1,2,3,0,0],"optimalMoves":8,"difficulty":3,"solution":[{"from":10,"to":5,"score":80},{"from":15,"to":10,"score":80},{"from":20,"to":15,"score":80},{"from":21,"to":20,"score":80},{"from":22,"to":21,"score":2200},{"from":15,"to":17,"score":1600},{"from":19,"to":16,"score":1300},{"from":24,"to":21,"score":1300}]},
+    {"id":57,"grid":[0,3,1,2,1,1,-1,0,0,2,0,0,1,1,3,2,3,0,2,2,3,2,3,3,1],"optimalMoves":8,"difficulty":3,"solution":[{"from":11,"to":6,"score":1900},{"from":19,"to":18,"score":1300},{"from":5,"to":9,"score":40},{"from":10,"to":5,"score":60},{"from":15,"to":10,"score":60},{"from":20,"to":15,"score":1300},{"from":19,"to":16,"score":1600},{"from":22,"to":21,"score":1300}]},
+    {"id":58,"grid":[0,1,0,2,1,1,0,1,-1,3,2,0,2,3,2,3,2,3,0,3,1,2,3,0,1],"optimalMoves":10,"difficulty":3,"solution":[{"from":13,"to":8,"score":100},{"from":12,"to":13,"score":120},{"from":7,"to":12,"score":120},{"from":2,"to":7,"score":1300},{"from":5,"to":7,"score":1300},{"from":10,"to":12,"score":1600},{"from":13,"to":11,"score":1300},{"from":15,"to":16,"score":1300},{"from":15,"to":17,"score":1300},{"from":20,"to":23,"score":1300}]},
+    {"id":59,"grid":[2,3,2,1,0,1,1,3,1,3,0,-1,1,3,0,2,0,0,2,2,2,1,3,0,3],"optimalMoves":9,"difficulty":3,"solution":[{"from":10,"to":11,"score":2200},{"from":10,"to":12,"score":1600},{"from":22,"to":2,"score":0},{"from":2,"to":4,"score":0},{"from":9,"to":5,"score":0},{"from":14,"to":9,"score":20},{"from":5,"to":20,"score":20},{"from":23,"to":21,"score":40},{"from":19,"to":15,"score":1600}]},
+    {"id":60,"grid":[1,2,0,3,3,1,-1,0,2,1,3,0,2,1,0,2,3,0,3,3,0,1,2,2,1],"optimalMoves":14,"difficulty":3,"solution":[{"from":11,"to":6,"score":1300},{"from":8,"to":6,"score":1300},{"from":8,"to":3,"score":80},{"from":5,"to":8,"score":1600},{"from":14,"to":11,"score":1300},{"from":19,"to":18,"score":40},{"from":10,"to":14,"score":40},{"from":14,"to":19,"score":60},{"from":21,"to":1,"score":60},{"from":1,"to":0,"score":60},{"from":15,"to":16,"score":60},{"from":16,"to":21,"score":1300},{"from":20,"to":21,"score":1300},{"from":20,"to":23,"score":1300}]},
+    {"id":61,"grid":[0,2,1,2,3,0,3,0,2,1,1,2,3,3,0,0,1,0,2,1,3,1,2,3,-1],"optimalMoves":13,"difficulty":3,"solution":[{"from":19,"to":24,"score":80},{"from":14,"to":19,"score":80},{"from":9,"to":14,"score":80},{"from":4,"to":9,"score":80},{"from":3,"to":4,"score":60},{"from":8,"to":3,"score":80},{"from":9,"to":8,"score":1300},{"from":9,"to":8,"score":1300},{"from":19,"to":18,"score":1600},{"from":16,"to":18,"score":80},{"from":11,"to":16,"score":1300},{"from":10,"to":14,"score":1600},{"from":20,"to":22,"score":1300}]},
+    {"id":62,"grid":[0,1,1,2,0,3,2,3,0,1,3,0,3,2,0,1,2,-1,3,3,1,0,1,2,2],"optimalMoves":9,"difficulty":3,"solution":[{"from":18,"to":17,"score":1600},{"from":14,"to":12,"score":1300},{"from":11,"to":13,"score":1300},{"from":18,"to":17,"score":1600},{"from":23,"to":22,"score":40},{"from":24,"to":4,"score":40},{"from":10,"to":0,"score":40},{"from":4,"to":1,"score":40},{"from":1,"to":16,"score":1600}]},
+    {"id":63,"grid":[0,2,0,3,3,1,0,3,2,0,2,1,2,1,3,2,-1,2,0,0,1,3,1,1,3],"optimalMoves":14,"difficulty":3,"solution":[{"from":17,"to":16,"score":1600},{"from":16,"to":15,"score":80},{"from":11,"to":16,"score":100},{"from":7,"to":5,"score":100},{"from":12,"to":2,"score":1600},{"from":8,"to":5,"score":60},{"from":21,"to":20,"score":60},{"from":5,"to":15,"score":1300},{"from":9,"to":5,"score":40},{"from":13,"to":3,"score":40},{"from":14,"to":4,"score":40},{"from":5,"to":15,"score":40},{"from":15,"to":17,"score":1600},{"from":20,"to":23,"score":1300}]},
+    {"id":64,"grid":[2,3,-1,0,0,2,0,3,1,3,3,1,3,1,2,2,3,0,2,0,1,1,2,1,0],"optimalMoves":9,"difficulty":3,"solution":[{"from":1,"to":2,"score":1300},{"from":17,"to":2,"score":1300},{"from":11,"to":12,"score":1300},{"from":18,"to":17,"score":80},{"from":14,"to":12,"score":1300},{"from":23,"to":22,"score":1300},{"from":16,"to":18,"score":1300},{"from":15,"to":19,"score":40},{"from":21,"to":23,"score":1600}]},
+    {"id":65,"grid":[0,1,2,0,2,0,3,2,3,1,1,2,1,3,1,3,0,3,-1,2,2,0,1,0,3],"optimalMoves":8,"difficulty":3,"solution":[{"from":17,"to":18,"score":1600},{"from":6,"to":8,"score":1300},{"from":11,"to":13,"score":100},{"from":10,"to":12,"score":1300},{"from":21,"to":22,"score":1300},{"from":15,"to":18,"score":1300},{"from":21,"to":1,"score":40},{"from":20,"to":23,"score":1600}]},
+    {"id":66,"grid":[3,0,3,0,2,3,2,1,3,1,2,0,1,3,2,1,2,3,-1,0,2,0,0,1,1],"optimalMoves":8,"difficulty":3,"solution":[{"from":17,"to":18,"score":1300},{"from":9,"to":8,"score":100},{"from":8,"to":13,"score":1300},{"from":11,"to":13,"score":1900},{"from":15,"to":18,"score":1300},{"from":22,"to":21,"score":40},{"from":21,"to":1,"score":40},{"from":20,"to":23,"score":1600}]},
+    {"id":67,"grid":[2,2,1,1,0,0,0,-1,3,2,3,2,0,1,3,2,1,2,3,0,0,3,1,1,3],"optimalMoves":11,"difficulty":3,"solution":[{"from":12,"to":7,"score":1600},{"from":8,"to":5,"score":60},{"from":3,"to":8,"score":1300},{"from":14,"to":11,"score":1300},{"from":14,"to":10,"score":40},{"from":9,"to":14,"score":60},{"from":16,"to":1,"score":60},{"from":17,"to":16,"score":1300},{"from":16,"to":17,"score":1300},{"from":21,"to":22,"score":1300},{"from":20,"to":23,"score":1300}]},
+    {"id":68,"grid":[3,1,0,3,0,0,-1,1,1,2,1,2,3,3,1,3,3,2,1,0,2,0,0,2,2],"optimalMoves":10,"difficulty":3,"solution":[{"from":1,"to":6,"score":1600},{"from":14,"to":13,"score":80},{"from":9,"to":6,"score":100},{"from":19,"to":9,"score":120},{"from":12,"to":2,"score":120},{"from":17,"to":7,"score":1600},{"from":5,"to":9,"score":1300},{"from":10,"to":12,"score":1300},{"from":21,"to":1,"score":40},{"from":20,"to":22,"score":1600}]},
+    {"id":69,"grid":[0,0,2,2,1,2,-1,0,3,1,3,1,2,2,3,2,0,3,0,0,3,1,1,3,1],"optimalMoves":14,"difficulty":3,"solution":[{"from":7,"to":6,"score":1600},{"from":5,"to":7,"score":100},{"from":17,"to":12,"score":1300},{"from":13,"to":12,"score":80},{"from":11,"to":1,"score":80},{"from":1,"to":4,"score":1300},{"from":16,"to":1,"score":60},{"from":15,"to":16,"score":1300},{"from":16,"to":17,"score":1300},{"from":24,"to":4,"score":40},{"from":23,"to":3,"score":40},{"from":3,"to":0,"score":40},{"from":0,"to":10,"score":1300},{"from":24,"to":23,"score":1300}]},
+    {"id":70,"grid":[1,3,3,0,2,1,0,1,2,0,3,3,0,0,3,0,-1,3,2,2,1,2,2,1,1],"optimalMoves":15,"difficulty":3,"solution":[{"from":17,"to":16,"score":1900},{"from":16,"to":15,"score":60},{"from":12,"to":10,"score":80},{"from":13,"to":11,"score":80},{"from":8,"to":13,"score":1300},{"from":17,"to":2,"score":60},{"from":16,"to":17,"score":80},{"from":14,"to":10,"score":80},{"from":2,"to":12,"score":80},{"from":9,"to":4,"score":80},{"from":10,"to":11,"score":80},{"from":11,"to":16,"score":1300},{"from":17,"to":18,"score":1300},{"from":19,"to":16,"score":1300},{"from":24,"to":21,"score":1300}]},
+    {"id":71,"grid":[2,0,3,2,1,3,3,0,1,2,2,-1,3,3,1,2,0,2,0,0,1,1,0,1,3],"optimalMoves":11,"difficulty":4,"solution":[{"from":12,"to":11,"score":1900},{"from":17,"to":15,"score":60},{"from":22,"to":17,"score":1300},{"from":18,"to":16,"score":20},{"from":23,"to":18,"score":1300},{"from":14,"to":4,"score":20},{"from":23,"to":3,"score":20},{"from":22,"to":23,"score":40},{"from":16,"to":18,"score":1300},{"from":19,"to":16,"score":1300},{"from":20,"to":22,"score":1300}]},
+    {"id":72,"grid":[0,1,0,1,1,0,2,3,2,3,1,3,0,3,2,1,3,0,2,0,2,2,-1,1,3],"optimalMoves":8,"difficulty":4,"solution":[{"from":23,"to":22,"score":120},{"from":24,"to":23,"score":120},{"from":19,"to":24,"score":120},{"from":18,"to":19,"score":140},{"from":13,"to":18,"score":160},{"from":8,"to":13,"score":1600},{"from":19,"to":18,"score":2500},{"from":24,"to":21,"score":1300}]},
+    {"id":73,"grid":[0,2,3,1,3,3,0,3,1,2,-1,1,2,0,3,0,2,0,3,2,1,1,0,1,2],"optimalMoves":11,"difficulty":4,"solution":[{"from":5,"to":10,"score":100},{"from":6,"to":5,"score":120},{"from":11,"to":6,"score":120},{"from":12,"to":11,"score":140},{"from":13,"to":12,"score":1900},{"from":19,"to":17,"score":1600},{"from":19,"to":16,"score":40},{"from":21,"to":23,"score":60},{"from":14,"to":19,"score":1300},{"from":15,"to":19,"score":40},{"from":21,"to":23,"score":1600}]},
+    {"id":74,"grid":[1,2,0,1,3,1,2,1,0,3,2,3,-1,3,2,3,0,3,1,0,0,2,1,2,0],"optimalMoves":8,"difficulty":4,"solution":[{"from":11,"to":12,"score":2200},{"from":16,"to":17,"score":80},{"from":10,"to":13,"score":80},{"from":21,"to":1,"score":80},{"from":20,"to":21,"score":1300},{"from":15,"to":17,"score":1300},{"from":21,"to":22,"score":1300},{"from":20,"to":23,"score":1300}]},
+    {"id":75,"grid":[2,1,-1,1,2,0,0,1,2,3,3,3,2,0,3,0,1,3,0,2,0,3,1,1,2],"optimalMoves":9,"difficulty":4,"solution":[{"from":3,"to":2,"score":1300},{"from":0,"to":3,"score":1300},{"from":6,"to":8,"score":1300},{"from":9,"to":6,"score":1600},{"from":12,"to":13,"score":40},{"from":13,"to":18,"score":1300},{"from":17,"to":19,"score":40},{"from":16,"to":18,"score":1300},{"from":21,"to":23,"score":1300}]},
+    {"id":76,"grid":[0,1,2,0,1,0,1,2,1,3,2,3,1,2,3,3,2,0,3,0,-1,2,0,3,1],"optimalMoves":8,"difficulty":4,"solution":[{"from":15,"to":20,"score":140},{"from":10,"to":15,"score":1900},{"from":8,"to":5,"score":1300},{"from":13,"to":3,"score":100},{"from":18,"to":8,"score":1300},{"from":18,"to":3,"score":40},{"from":19,"to":18,"score":1600},{"from":23,"to":22,"score":1300}]},
+    {"id":77,"grid":[1,3,1,1,2,2,0,0,2,0,2,3,1,1,0,3,0,0,3,3,3,-1,2,2,1],"optimalMoves":14,"difficulty":4,"solution":[{"from":22,"to":21,"score":160},{"from":23,"to":22,"score":180},{"from":24,"to":23,"score":180},{"from":19,"to":24,"score":160},{"from":18,"to":19,"score":180},{"from":23,"to":18,"score":2200},{"from":16,"to":18,"score":1300},{"from":19,"to":16,"score":60},{"from":24,"to":19,"score":60},{"from":19,"to":17,"score":1300},{"from":24,"to":4,"score":40},{"from":10,"to":14,"score":40},{"from":14,"to":24,"score":1300},{"from":24,"to":21,"score":1300}]},
+    {"id":78,"grid":[1,1,3,3,2,0,3,2,1,0,1,0,3,2,1,-1,2,1,2,0,0,0,2,3,3],"optimalMoves":8,"difficulty":4,"solution":[{"from":16,"to":15,"score":100},{"from":11,"to":16,"score":2200},{"from":10,"to":13,"score":1300},{"from":15,"to":18,"score":1300},{"from":19,"to":15,"score":40},{"from":21,"to":1,"score":40},{"from":22,"to":21,"score":1300},{"from":21,"to":22,"score":1300}]},
+    {"id":79,"grid":[0,3,1,0,-1,2,1,0,1,3,3,2,0,2,1,3,2,3,0,1,0,1,2,2,3],"optimalMoves":10,"difficulty":4,"solution":[{"from":9,"to":4,"score":100},{"from":8,"to":9,"score":1600},{"from":12,"to":2,"score":80},{"from":13,"to":12,"score":1600},{"from":12,"to":11,"score":1300},{"from":15,"to":16,"score":40},{"from":16,"to":21,"score":1300},{"from":23,"to":3,"score":40},{"from":22,"to":23,"score":1300},{"from":23,"to":21,"score":1300}]},
+    {"id":80,"grid":[1,3,2,3,1,-1,2,3,2,0,3,0,3,1,1,0,2,1,0,0,0,1,2,2,3],"optimalMoves":11,"difficulty":4,"solution":[{"from":6,"to":5,"score":100},{"from":1,"to":6,"score":1300},{"from":5,"to":7,"score":1300},{"from":4,"to":0,"score":100},{"from":13,"to":12,"score":100},{"from":14,"to":13,"score":1600},{"from":16,"to":17,"score":1600},{"from":21,"to":22,"score":40},{"from":22,"to":2,"score":40},{"from":20,"to":22,"score":1300},{"from":22,"to":21,"score":1300}]},
+    {"id":81,"grid":[3,1,3,2,0,0,2,0,3,-1,2,1,2,0,1,3,0,2,3,1,2,0,1,1,3],"optimalMoves":15,"difficulty":4,"solution":[{"from":8,"to":9,"score":80},{"from":13,"to":8,"score":100},{"from":18,"to":13,"score":100},{"from":23,"to":18,"score":2200},{"from":17,"to":2,"score":40},{"from":2,"to":1,"score":60},{"from":16,"to":19,"score":60},{"from":11,"to":16,"score":1300},{"from":21,"to":1,"score":40},{"from":10,"to":14,"score":60},{"from":5,"to":9,"score":60},{"from":15,"to":5,"score":1300},{"from":9,"to":4,"score":40},{"from":19,"to":15,"score":40},{"from":14,"to":10,"score":1600}]},
+    {"id":82,"grid":[2,-1,1,2,0,3,3,0,1,0,2,2,3,0,3,1,1,2,2,1,0,0,1,3,3],"optimalMoves":14,"difficulty":4,"solution":[{"from":0,"to":1,"score":140},{"from":5,"to":0,"score":120},{"from":6,"to":5,"score":140},{"from":1,"to":6,"score":1300},{"from":12,"to":11,"score":1300},{"from":3,"to":0,"score":140},{"from":0,"to":10,"score":140},{"from":10,"to":11,"score":140},{"from":11,"to":1,"score":140},{"from":16,"to":6,"score":1600},{"from":18,"to":3,"score":1300},{"from":17,"to":16,"score":1300},{"from":19,"to":15,"score":40},{"from":22,"to":21,"score":1600}]},
+    {"id":83,"grid":[0,2,2,0,3,2,3,1,0,3,1,0,1,2,0,1,2,3,1,3,-1,3,0,1,2],"optimalMoves":16,"difficulty":4,"solution":[{"from":21,"to":20,"score":120},{"from":22,"to":21,"score":120},{"from":17,"to":22,"score":120},{"from":18,"to":17,"score":2200},{"from":24,"to":4,"score":60},{"from":4,"to":1,"score":1300},{"from":11,"to":1,"score":40},{"from":22,"to":2,"score":60},{"from":5,"to":0,"score":60},{"from":23,"to":24,"score":60},{"from":24,"to":4,"score":60},{"from":0,"to":5,"score":60},{"from":5,"to":9,"score":60},{"from":9,"to":24,"score":60},{"from":24,"to":22,"score":1600},{"from":24,"to":21,"score":1300}]},
+    {"id":84,"grid":[3,3,1,2,3,1,2,2,0,3,0,0,3,2,0,1,2,0,-1,0,1,2,1,1,3],"optimalMoves":15,"difficulty":4,"solution":[{"from":17,"to":18,"score":1600},{"from":7,"to":2,"score":100},{"from":8,"to":7,"score":1300},{"from":6,"to":1,"score":100},{"from":13,"to":14,"score":100},{"from":18,"to":19,"score":100},{"from":14,"to":4,"score":100},{"from":19,"to":24,"score":100},{"from":5,"to":9,"score":100},{"from":12,"to":14,"score":120},{"from":17,"to":2,"score":1300},{"from":9,"to":5,"score":1300},{"from":19,"to":17,"score":1300},{"from":24,"to":22,"score":1300},{"from":24,"to":21,"score":1300}]},
+    {"id":85,"grid":[2,0,3,2,0,3,-1,3,0,2,1,2,2,0,1,0,0,1,3,3,2,1,3,1,1],"optimalMoves":15,"difficulty":4,"solution":[{"from":5,"to":6,"score":1300},{"from":6,"to":7,"score":1600},{"from":5,"to":8,"score":80},{"from":10,"to":13,"score":100},{"from":4,"to":0,"score":100},{"from":0,"to":10,"score":1300},{"from":20,"to":0,"score":80},{"from":0,"to":4,"score":1300},{"from":21,"to":1,"score":60},{"from":17,"to":2,"score":80},{"from":13,"to":3,"score":1300},{"from":14,"to":4,"score":40},{"from":22,"to":2,"score":40},{"from":2,"to":3,"score":40},{"from":3,"to":13,"score":1600}]},
+    {"id":86,"grid":[0,0,1,0,3,1,3,2,0,2,3,2,1,3,0,-1,1,0,3,2,2,3,1,1,2],"optimalMoves":16,"difficulty":4,"solution":[{"from":20,"to":15,"score":100},{"from":21,"to":20,"score":100},{"from":16,"to":21,"score":2200},{"from":7,"to":6,"score":20},{"from":17,"to":19,"score":20},{"from":0,"to":4,"score":20},{"from":12,"to":2,"score":20},{"from":19,"to":24,"score":20},{"from":4,"to":19,"score":20},{"from":11,"to":14,"score":40},{"from":16,"to":11,"score":60},{"from":21,"to":16,"score":80},{"from":2,"to":17,"score":1600},{"from":22,"to":23,"score":40},{"from":23,"to":3,"score":40},{"from":24,"to":22,"score":1600}]},
+    {"id":87,"grid":[3,0,1,1,3,1,2,2,0,3,1,3,1,2,0,2,2,3,0,2,-1,0,0,3,1],"optimalMoves":13,"difficulty":4,"solution":[{"from":15,"to":20,"score":100},{"from":16,"to":15,"score":120},{"from":11,"to":16,"score":140},{"from":12,"to":11,"score":1900},{"from":12,"to":13,"score":100},{"from":11,"to":12,"score":100},{"from":10,"to":11,"score":1600},{"from":23,"to":21,"score":60},{"from":21,"to":23,"score":60},{"from":13,"to":3,"score":40},{"from":18,"to":8,"score":60},{"from":23,"to":13,"score":1600},{"from":24,"to":21,"score":1300}]},
+    {"id":88,"grid":[1,0,0,2,2,3,1,1,3,3,3,2,-1,0,1,2,3,1,0,2,0,2,3,1,0],"optimalMoves":10,"difficulty":4,"solution":[{"from":17,"to":12,"score":1600},{"from":16,"to":17,"score":1600},{"from":9,"to":6,"score":60},{"from":6,"to":16,"score":1300},{"from":14,"to":10,"score":60},{"from":9,"to":14,"score":1300},{"from":23,"to":22,"score":40},{"from":22,"to":2,"score":40},{"from":24,"to":22,"score":1300},{"from":22,"to":21,"score":1300}]},
+    {"id":89,"grid":[3,2,0,0,1,1,0,1,2,2,1,3,0,1,3,-1,0,2,0,1,2,3,2,3,3],"optimalMoves":13,"difficulty":4,"solution":[{"from":16,"to":15,"score":100},{"from":21,"to":16,"score":120},{"from":20,"to":21,"score":1300},{"from":6,"to":7,"score":1300},{"from":8,"to":6,"score":1300},{"from":13,"to":11,"score":1600},{"from":22,"to":21,"score":40},{"from":9,"to":4,"score":40},{"from":17,"to":15,"score":40},{"from":18,"to":16,"score":1300},{"from":19,"to":15,"score":40},{"from":14,"to":19,"score":1300},{"from":24,"to":21,"score":1300}]},
+    {"id":90,"grid":[0,0,3,1,3,3,1,2,0,0,0,3,2,1,1,1,2,1,0,2,3,2,3,-1,2],"optimalMoves":14,"difficulty":4,"solution":[{"from":22,"to":23,"score":120},{"from":17,"to":22,"score":120},{"from":12,"to":17,"score":1300},{"from":8,"to":6,"score":1600},{"from":14,"to":13,"score":80},{"from":5,"to":8,"score":1300},{"from":17,"to":18,"score":1300},{"from":17,"to":19,"score":1300},{"from":10,"to":0,"score":40},{"from":0,"to":4,"score":40},{"from":22,"to":2,"score":40},{"from":16,"to":1,"score":40},{"from":15,"to":0,"score":1300},{"from":24,"to":22,"score":1300}]},
+    {"id":91,"grid":[1,0,-1,0,3,3,1,3,3,2,2,3,2,0,1,2,0,2,0,2,0,1,1,3,1],"optimalMoves":11,"difficulty":4,"solution":[{"from":3,"to":2,"score":120},{"from":4,"to":3,"score":1300},{"from":7,"to":8,"score":1300},{"from":19,"to":18,"score":1300},{"from":19,"to":17,"score":1300},{"from":16,"to":18,"score":60},{"from":11,"to":14,"score":60},{"from":6,"to":16,"score":1300},{"from":10,"to":13,"score":1300},{"from":19,"to":16,"score":1300},{"from":20,"to":23,"score":1300}]},
+    {"id":92,"grid":[3,0,2,0,0,3,-1,2,1,3,2,1,0,2,1,3,2,1,1,0,1,2,0,3,3],"optimalMoves":7,"difficulty":4,"solution":[{"from":11,"to":6,"score":120},{"from":10,"to":11,"score":1600},{"from":16,"to":1,"score":100},{"from":17,"to":15,"score":2200},{"from":14,"to":10,"score":40},{"from":9,"to":14,"score":1300},{"from":20,"to":22,"score":1300}]},
+    {"id":93,"grid":[2,3,1,2,0,3,1,0,1,3,2,3,-1,2,1,3,2,0,2,1,1,0,3,0,0],"optimalMoves":9,"difficulty":4,"solution":[{"from":7,"to":12,"score":80},{"from":2,"to":7,"score":1900},{"from":17,"to":18,"score":1300},{"from":9,"to":6,"score":40},{"from":16,"to":11,"score":1600},{"from":14,"to":10,"score":40},{"from":22,"to":2,"score":40},{"from":20,"to":23,"score":1300},{"from":22,"to":21,"score":1300}]},
+    {"id":94,"grid":[1,2,3,0,3,1,0,1,0,1,-1,3,2,3,1,3,2,0,2,2,2,0,1,0,3],"optimalMoves":14,"difficulty":4,"solution":[{"from":15,"to":10,"score":100},{"from":16,"to":15,"score":120},{"from":17,"to":16,"score":140},{"from":12,"to":17,"score":2200},{"from":20,"to":21,"score":1300},{"from":20,"to":0,"score":40},{"from":0,"to":4,"score":40},{"from":23,"to":20,"score":40},{"from":18,"to":23,"score":60},{"from":20,"to":0,"score":60},{"from":0,"to":3,"score":1300},{"from":9,"to":5,"score":40},{"from":4,"to":9,"score":1300},{"from":20,"to":22,"score":1300}]},
+    {"id":95,"grid":[0,1,3,0,1,3,0,0,1,2,0,1,3,2,-1,0,2,2,1,2,1,3,3,2,3],"optimalMoves":14,"difficulty":4,"solution":[{"from":19,"to":14,"score":1900},{"from":24,"to":4,"score":100},{"from":4,"to":1,"score":100},{"from":23,"to":24,"score":100},{"from":24,"to":4,"score":100},{"from":4,"to":2,"score":100},{"from":7,"to":9,"score":80},{"from":12,"to":14,"score":100},{"from":2,"to":12,"score":1300},{"from":19,"to":17,"score":1600},{"from":24,"to":22,"score":40},{"from":10,"to":14,"score":40},{"from":5,"to":10,"score":1300},{"from":24,"to":23,"score":1300}]},
+    {"id":96,"grid":[3,1,1,2,0,0,0,3,0,1,-1,1,2,2,3,2,0,3,3,1,2,0,2,1,3],"optimalMoves":16,"difficulty":5,"solution":[{"from":11,"to":10,"score":120},{"from":6,"to":11,"score":1300},{"from":21,"to":1,"score":80},{"from":22,"to":21,"score":1300},{"from":12,"to":11,"score":40},{"from":17,"to":12,"score":60},{"from":18,"to":16,"score":1300},{"from":15,"to":16,"score":40},{"from":4,"to":0,"score":40},{"from":0,"to":15,"score":60},{"from":9,"to":4,"score":60},{"from":12,"to":2,"score":60},{"from":13,"to":10,"score":1600},{"from":19,"to":18,"score":1300},{"from":22,"to":23,"score":1300},{"from":24,"to":22,"score":1300}]},
+    {"id":97,"grid":[2,3,3,1,0,0,2,0,2,3,3,0,1,0,3,-1,2,2,0,1,3,1,1,2,1],"optimalMoves":7,"difficulty":5,"solution":[{"from":10,"to":15,"score":140},{"from":11,"to":10,"score":160},{"from":6,"to":11,"score":2200},{"from":10,"to":12,"score":80},{"from":12,"to":17,"score":1600},{"from":14,"to":10,"score":1300},{"from":22,"to":23,"score":1300}]},
+    {"id":98,"grid":[2,1,3,1,0,0,3,2,0,3,0,3,0,2,0,2,1,3,2,1,1,3,-1,1,2],"optimalMoves":8,"difficulty":5,"solution":[{"from":21,"to":22,"score":80},{"from":16,"to":21,"score":100},{"from":17,"to":16,"score":1900},{"from":15,"to":16,"score":1600},{"from":14,"to":11,"score":20},{"from":11,"to":21,"score":1300},{"from":15,"to":18,"score":1300},{"from":24,"to":21,"score":1300}]},
+    {"id":99,"grid":[0,2,0,2,2,1,3,2,3,1,1,3,1,0,1,0,2,0,2,3,0,3,1,3,-1],"optimalMoves":11,"difficulty":5,"solution":[{"from":19,"to":24,"score":120},{"from":18,"to":19,"score":120},{"from":17,"to":18,"score":140},{"from":12,"to":17,"score":160},{"from":7,"to":12,"score":160},{"from":8,"to":7,"score":1900},{"from":10,"to":13,"score":1600},{"from":10,"to":14,"score":60},{"from":5,"to":10,"score":1300},{"from":19,"to":18,"score":1300},{"from":21,"to":22,"score":1300}]},
+    {"id":100,"grid":[0,0,3,3,1,-1,2,0,2,0,3,0,1,1,3,2,1,3,0,2,2,1,2,1,3],"optimalMoves":15,"difficulty":5,"solution":[{"from":10,"to":5,"score":100},{"from":11,"to":10,"score":100},{"from":16,"to":11,"score":1900},{"from":8,"to":5,"score":20},{"from":5,"to":10,"score":20},{"from":10,"to":11,"score":1300},{"from":18,"to":16,"score":20},{"from":19,"to":17,"score":40},{"from":13,"to":18,"score":1300},{"from":14,"to":10,"score":1300},{"from":23,"to":22,"score":40},{"from":20,"to":0,"score":40},{"from":14,"to":10,"score":40},{"from":10,"to":20,"score":1300},{"from":20,"to":23,"score":1300}]}
+];
+        
+        // Launch date for puzzle numbering (change this to your actual launch date)
+        const LAUNCH_DATE = new Date('2026-01-30');
+        
+        let grid = [];
+        let selectedCell = null;
+        let moves = 0;
+        let par = 12;
+        let difficulty = 1;
+        let puzzleNumber = 1;
+        let initialGrid = [];
+        let currentPuzzle = null;
+        let previousGrid = null;  // Store state before last move
+        let canUndo = false;      // Only allow one undo
+        let moveResults = [];     // Track if each move cleared blocks: true = cleared, false = setup
+        let gameOver = false;     // Track if game has ended (win or give up)
+        let hasOrphanedBlocks = false;  // Track if any color has only 1-2 blocks left
+        
+        // Get today's puzzle number based on days since launch
+        function getPuzzleNumber() {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const launch = new Date(LAUNCH_DATE);
+            launch.setHours(0, 0, 0, 0);
+            const daysSinceLaunch = Math.floor((today - launch) / (1000 * 60 * 60 * 24));
+            return Math.max(1, daysSinceLaunch + 1); // Day 1 = puzzle 1
+        }
+        
+        // Get color remapping based on cycle (for variety after all puzzles played)
+        function getColorRemap(cycle) {
+            // Different color permutations for each cycle
+            const permutations = [
+                [0, 1, 2, 3], // Cycle 0: original
+                [1, 2, 3, 0], // Cycle 1: rotate
+                [2, 3, 0, 1], // Cycle 2: rotate more
+                [3, 0, 1, 2], // Cycle 3: rotate more
+            ];
+            return permutations[cycle % permutations.length];
+        }
+        
+        // Seeded random number generator for consistent shuffling
+        function seededRandom(seed) {
+            const x = Math.sin(seed) * 10000;
+            return x - Math.floor(x);
+        }
+        
+        // Shuffle array with a seed (Fisher-Yates)
+        function seededShuffle(array, seed) {
+            const result = [...array];
+            for (let i = result.length - 1; i > 0; i--) {
+                const j = Math.floor(seededRandom(seed + i) * (i + 1));
+                [result[i], result[j]] = [result[j], result[i]];
+            }
+            return result;
+        }
+        
+        // Get shuffled puzzle order for a given cycle
+        function getShuffledPuzzleIndex(dayInCycle, cycle) {
+            if (cycle === 0) {
+                // First cycle: original order
+                return dayInCycle;
+            }
+            // Subsequent cycles: shuffle based on cycle number as seed
+            const indices = Array.from({ length: PUZZLES.length }, (_, i) => i);
+            const shuffled = seededShuffle(indices, cycle * 1000);
+            return shuffled[dayInCycle];
+        }
+        
+        // localStorage key (bump version to reset all players)
+        const STORAGE_KEY = 'making-moves-state-v2';
+        
+        // Save game state to localStorage
+        function saveGameState() {
+            const state = {
+                puzzleNumber,
+                grid,
+                moves,
+                moveResults,
+                gameOver,
+                canUndo,
+                previousGrid,
+                hasOrphanedBlocks
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+        
+        // Load game state from localStorage
+        function loadGameState() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (!saved) return null;
+                return JSON.parse(saved);
+            } catch (e) {
+                return null;
+            }
+        }
+        
+        // Initialize game
+        function init() {
+            puzzleNumber = getPuzzleNumber();
+            const savedState = loadGameState();
+            
+            // Check if we have a saved state for TODAY's puzzle
+            if (savedState && savedState.puzzleNumber === puzzleNumber) {
+                // Restore saved state
+                grid = savedState.grid;
+                moves = savedState.moves;
+                moveResults = savedState.moveResults || [];
+                gameOver = savedState.gameOver || false;
+                canUndo = savedState.canUndo || false;
+                previousGrid = savedState.previousGrid || null;
+                hasOrphanedBlocks = savedState.hasOrphanedBlocks || false;
+
+                // Recalculate par and initialGrid from puzzle data
+                const totalPuzzles = PUZZLES.length;
+                const cycle = Math.floor((puzzleNumber - 1) / totalPuzzles);
+                const dayInCycle = (puzzleNumber - 1) % totalPuzzles;
+                const puzzleIndex = getShuffledPuzzleIndex(dayInCycle, cycle);
+                currentPuzzle = PUZZLES[puzzleIndex];
+                const colorRemap = getColorRemap(cycle);
+
+                difficulty = currentPuzzle.difficulty || 1;
+                par = currentPuzzle.optimalMoves + difficulty;
+                initialGrid = currentPuzzle.grid.map(cell => {
+                    if (cell === -1) return -1;
+                    return colorRemap[cell];
+                });
+
+                // If game was over, show the share box
+                if (gameOver) {
+                    const blocksRemaining = grid.filter(v => v !== -1).length;
+                    if (blocksRemaining === 0) {
+                        showShare(true);
+                        setMessage(getMoveResultMessage(), 'success');
+                    } else {
+                        showShare(false);
+                        setMessage('😅 Better luck tomorrow!', 'warning');
+                    }
+                    document.getElementById('giveUpBtn').disabled = true;
+                    document.getElementById('undoBtn').disabled = true;
+                } else if (hasOrphanedBlocks) {
+                    // Restore orphaned state
+                    setMessage('Not enough blocks of one color left to clear!', 'warning');
+                    // Undo and Give Up remain enabled
+                }
+
+                updateStats();
+                updateUndoButton();
+            } else {
+                // New day or no saved state — load fresh puzzle
+                loadPuzzle();
+            }
+            
+            render();
+        }
+        
+        // Get the result message for a completed game
+        function getMoveResultMessage() {
+            const diff = moves - par;
+            if (diff < 0) {
+                return `🎉 Amazing! ${Math.abs(diff)} under par!`;
+            } else if (diff === 0) {
+                return `✨ Perfect! Right on par!`;
+            } else {
+                return `👏 Cleared! ${diff} over par.`;
+            }
+        }
+
+        // Load today's puzzle (fresh start)
+        function loadPuzzle() {
+            puzzleNumber = getPuzzleNumber();
+            const totalPuzzles = PUZZLES.length;
+            
+            // Calculate which cycle and day within cycle
+            const cycle = Math.floor((puzzleNumber - 1) / totalPuzzles);
+            const dayInCycle = (puzzleNumber - 1) % totalPuzzles;
+            
+            // Get shuffled puzzle index (shuffled differently each cycle)
+            const puzzleIndex = getShuffledPuzzleIndex(dayInCycle, cycle);
+            
+            currentPuzzle = PUZZLES[puzzleIndex];
+            const colorRemap = getColorRemap(cycle);
+
+            // Apply color remapping for variety
+            grid = currentPuzzle.grid.map(cell => {
+                if (cell === -1) return -1; // Empty stays empty
+                return colorRemap[cell];
+            });
+
+            difficulty = currentPuzzle.difficulty || 1;
+            par = currentPuzzle.optimalMoves + difficulty;
+            initialGrid = [...grid];
+            moves = 0;
+            selectedCell = null;
+            moveResults = [];
+            previousGrid = null;
+            canUndo = false;
+            gameOver = false;
+            hasOrphanedBlocks = false;
+            updateStats();
+            saveGameState();
+        }
+
+        // Check if current grid has any 3+ adjacent groups
+        function hasAnyMatches() {
+            for (let i = 0; i < grid.length; i++) {
+                if (grid[i] === -1) continue;
+                
+                const color = grid[i];
+                const connected = findConnectedInGrid(i, color, grid);
+                
+                if (connected.size >= 3) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Find connected cells of same color (used for initial board check)
+        function findConnectedInGrid(startIdx, color, gridToCheck) {
+            const connected = new Set();
+            const toCheck = [startIdx];
+            
+            while (toCheck.length > 0) {
+                const idx = toCheck.pop();
+                if (connected.has(idx)) continue;
+                if (gridToCheck[idx] !== color) continue;
+                
+                connected.add(idx);
+                
+                const row = Math.floor(idx / GRID_SIZE);
+                const col = idx % GRID_SIZE;
+                
+                if (row > 0) toCheck.push(idx - GRID_SIZE);
+                if (row < GRID_SIZE - 1) toCheck.push(idx + GRID_SIZE);
+                if (col > 0) toCheck.push(idx - 1);
+                if (col < GRID_SIZE - 1) toCheck.push(idx + 1);
+            }
+            
+            return connected;
+        }
+
+        // Confetti celebration effect
+        function celebrateWin() {
+            const container = document.querySelector('.game-container');
+            const confettiContainer = document.createElement('div');
+            confettiContainer.className = 'confetti-container';
+            container.appendChild(confettiContainer);
+
+            const colors = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#a66cff'];
+            const particleCount = 60 + Math.floor(Math.random() * 20); // 60-80 particles
+            const containerRect = container.getBoundingClientRect();
+            const centerX = containerRect.width / 2;
+            const centerY = containerRect.height / 2;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'confetti-particle';
+                particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.width = (5 + Math.random() * 5) + 'px';
+                particle.style.height = (5 + Math.random() * 5) + 'px';
+                particle.style.left = centerX + 'px';
+                particle.style.top = centerY + 'px';
+                confettiContainer.appendChild(particle);
+
+                // Random velocity and angle for burst effect
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = 150 + Math.random() * 200;
+                const vx = Math.cos(angle) * velocity;
+                const vy = Math.sin(angle) * velocity - 100; // Initial upward bias
+                const rotation = Math.random() * 360;
+                const rotationSpeed = (Math.random() - 0.5) * 720;
+
+                animateParticle(particle, centerX, centerY, vx, vy, rotation, rotationSpeed);
+            }
+
+            // Clean up after animation
+            setTimeout(() => {
+                confettiContainer.remove();
+            }, 1600);
+        }
+
+        function animateParticle(particle, x, y, vx, vy, rotation, rotationSpeed) {
+            const gravity = 400;
+            const friction = 0.98;
+            let elapsed = 0;
+            const duration = 1500;
+            let lastTime = performance.now();
+
+            function update(currentTime) {
+                const dt = (currentTime - lastTime) / 1000;
+                lastTime = currentTime;
+                elapsed += dt * 1000;
+
+                if (elapsed >= duration) {
+                    particle.style.opacity = '0';
+                    return;
+                }
+
+                // Physics update
+                vy += gravity * dt;
+                vx *= friction;
+                vy *= friction;
+                x += vx * dt;
+                y += vy * dt;
+                rotation += rotationSpeed * dt;
+
+                // Fade out in last 500ms
+                const opacity = elapsed > 1000 ? 1 - (elapsed - 1000) / 500 : 1;
+
+                particle.style.transform = `translate(${x - parseFloat(particle.style.width) / 2}px, ${y - parseFloat(particle.style.height) / 2}px) rotate(${rotation}deg)`;
+                particle.style.left = '0';
+                particle.style.top = '0';
+                particle.style.opacity = opacity;
+
+                requestAnimationFrame(update);
+            }
+
+            requestAnimationFrame(update);
+        }
+
+        // Render the grid
+        function render() {
+            const gridEl = document.getElementById('grid');
+            gridEl.innerHTML = '';
+            
+            // Calculate valid slide destinations if a block is selected
+            const slideDestinations = selectedCell !== null ? getSlideDestinations(selectedCell) : [];
+            
+            for (let i = 0; i < grid.length; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.index = i;
+                
+                if (grid[i] === -1) {
+                    cell.classList.add('empty');
+                    if (slideDestinations.includes(i)) {
+                        cell.classList.add('valid-destination');
+                    }
+                } else {
+                    cell.classList.add('block', `color-${grid[i]}`);
+                    if (selectedCell === i) {
+                        cell.classList.add('selected');
+                    }
+                }
+                
+                cell.addEventListener('click', () => handleClick(i));
+                gridEl.appendChild(cell);
+            }
+        }
+
+        // Get all valid slide destinations for a block (slides until hitting obstacle)
+        function getSlideDestinations(idx) {
+            const destinations = [];
+            const row = Math.floor(idx / GRID_SIZE);
+            const col = idx % GRID_SIZE;
+            
+            // Check all 4 directions: up, down, left, right
+            const directions = [
+                { dr: -1, dc: 0 },  // up
+                { dr: 1, dc: 0 },   // down
+                { dr: 0, dc: -1 },  // left
+                { dr: 0, dc: 1 }    // right
+            ];
+            
+            for (const { dr, dc } of directions) {
+                let newRow = row + dr;
+                let newCol = col + dc;
+                let lastEmpty = -1;
+                
+                // Slide until we hit a block or edge
+                while (newRow >= 0 && newRow < GRID_SIZE && newCol >= 0 && newCol < GRID_SIZE) {
+                    const newIdx = newRow * GRID_SIZE + newCol;
+                    
+                    if (grid[newIdx] === -1) {
+                        lastEmpty = newIdx;  // Track the furthest empty space
+                    } else {
+                        break;  // Hit a block, stop
+                    }
+                    
+                    newRow += dr;
+                    newCol += dc;
+                }
+                
+                // If we found an empty space in this direction, add the furthest one
+                if (lastEmpty !== -1) {
+                    destinations.push(lastEmpty);
+                }
+            }
+            
+            return destinations;
+        }
+
+        // Check if two indices are adjacent
+        function isAdjacent(idx1, idx2) {
+            const row1 = Math.floor(idx1 / GRID_SIZE);
+            const col1 = idx1 % GRID_SIZE;
+            const row2 = Math.floor(idx2 / GRID_SIZE);
+            const col2 = idx2 % GRID_SIZE;
+            
+            const rowDiff = Math.abs(row1 - row2);
+            const colDiff = Math.abs(col1 - col2);
+            
+            return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+        }
+
+        // Handle cell click
+        function handleClick(index) {
+            if (gameOver || hasOrphanedBlocks) return; // Game has ended or unwinnable
+            
+            const clickedValue = grid[index];
+            
+            if (selectedCell === null) {
+                // First click - select a block
+                if (clickedValue !== -1) {
+                    selectedCell = index;
+                    render();
+                    setMessage('Click a highlighted space to slide');
+                }
+            } else {
+                // Second click
+                if (index === selectedCell) {
+                    // Deselect
+                    selectedCell = null;
+                    render();
+                    setMessage('Click a block to select it');
+                } else if (clickedValue === -1) {
+                    // Clicked an empty space - check if it's a valid slide destination
+                    const destinations = getSlideDestinations(selectedCell);
+                    if (destinations.includes(index)) {
+                        makeMove(selectedCell, index);
+                    } else {
+                        setMessage('Can only slide in a straight line to the furthest empty space', 'warning');
+                    }
+                } else {
+                    // Select different block
+                    selectedCell = index;
+                    render();
+                    setMessage('Click a highlighted space to slide');
+                }
+            }
+        }
+
+        // Make a move (slide only - no swapping)
+        function makeMove(fromIdx, toIdx) {
+            // Always save current state before making a move (for potential undo)
+            previousGrid = [...grid];
+
+            // Enable undo button after first move (if not already enabled)
+            if (!canUndo) {
+                canUndo = true;
+                updateUndoButton();
+            }
+            
+            // Slide block to new position
+            grid[toIdx] = grid[fromIdx];
+            grid[fromIdx] = -1;
+            
+            moves++;
+            selectedCell = null;
+            
+            render();
+            updateStats();
+            saveGameState();
+            
+            // Check for matches after a short delay
+            setTimeout(() => {
+                checkMatchesAndTrack();
+            }, 150);
+        }
+
+        // Undo the last move (can only be used once per game)
+        function undoMove() {
+            if (!canUndo || gameOver) return;
+
+            // Determine what state to restore
+            let restoreGrid;
+            if (previousGrid) {
+                restoreGrid = previousGrid;
+            } else if (moves > 0) {
+                // First move with no previousGrid - restore to initial
+                restoreGrid = initialGrid;
+            } else {
+                return; // Nothing to undo
+            }
+
+            // Restore previous state
+            grid = [...restoreGrid];
+            moves++;  // Undo costs a move
+            moveResults.push(false);  // Undo is always a "setup" move (no clear)
+            selectedCell = null;
+            canUndo = false;
+            previousGrid = null;
+            hasOrphanedBlocks = false;  // Clear orphaned state
+
+            render();
+            updateStats();
+            updateUndoButton();
+            saveGameState();
+            setMessage('Move undone (+1 move penalty)');
+        }
+
+        // Update undo button state
+        function updateUndoButton() {
+            const btn = document.getElementById('undoBtn');
+            // Keep enabled if: can undo AND (not orphaned, OR orphaned but undo available)
+            btn.disabled = !canUndo;
+        }
+
+        // Check for matches and track if this move cleared blocks (called after player move)
+        function checkMatchesAndTrack() {
+            let matched = new Set();
+            
+            // Check each cell
+            for (let i = 0; i < grid.length; i++) {
+                if (grid[i] === -1) continue;
+                
+                const color = grid[i];
+                const connected = findConnected(i, color);
+                
+                if (connected.size >= 3) {
+                    connected.forEach(idx => matched.add(idx));
+                }
+            }
+            
+            // Record whether this move cleared blocks
+            moveResults.push(matched.size > 0);
+            
+            if (matched.size > 0) {
+                // Animate and remove matched blocks
+                removeMatches(matched);
+            } else {
+                checkWin();
+            }
+        }
+
+        // Check for matches (3+ adjacent same color) - used for chain reactions
+        function checkMatches() {
+            let matched = new Set();
+            
+            // Check each cell
+            for (let i = 0; i < grid.length; i++) {
+                if (grid[i] === -1) continue;
+                
+                const color = grid[i];
+                const connected = findConnected(i, color);
+                
+                if (connected.size >= 3) {
+                    connected.forEach(idx => matched.add(idx));
+                }
+            }
+            
+            if (matched.size > 0) {
+                // Animate and remove matched blocks
+                removeMatches(matched);
+            } else {
+                checkWin();
+            }
+        }
+
+        // Find all connected cells of same color using flood fill
+        function findConnected(startIdx, color) {
+            const connected = new Set();
+            const toCheck = [startIdx];
+            
+            while (toCheck.length > 0) {
+                const idx = toCheck.pop();
+                if (connected.has(idx)) continue;
+                if (grid[idx] !== color) continue;
+                
+                connected.add(idx);
+                
+                // Add adjacent cells
+                const row = Math.floor(idx / GRID_SIZE);
+                const col = idx % GRID_SIZE;
+                
+                if (row > 0) toCheck.push(idx - GRID_SIZE);
+                if (row < GRID_SIZE - 1) toCheck.push(idx + GRID_SIZE);
+                if (col > 0) toCheck.push(idx - 1);
+                if (col < GRID_SIZE - 1) toCheck.push(idx + 1);
+            }
+            
+            return connected;
+        }
+
+        // Remove matched blocks with animation
+        function removeMatches(matched) {
+            const cells = document.querySelectorAll('.cell');
+            
+            matched.forEach(idx => {
+                cells[idx].classList.add('popping');
+            });
+            
+            setTimeout(() => {
+                matched.forEach(idx => {
+                    grid[idx] = -1;
+                });
+                
+                render();
+                updateStats();
+                
+                // Apply gravity
+                setTimeout(() => {
+                    applyGravity();
+                }, 100);
+            }, 300);
+        }
+
+        // Apply gravity - blocks fall down
+        function applyGravity() {
+            let moved = false;
+            
+            // Process column by column, bottom to top
+            for (let col = 0; col < GRID_SIZE; col++) {
+                for (let row = GRID_SIZE - 1; row >= 0; row--) {
+                    const idx = row * GRID_SIZE + col;
+                    
+                    if (grid[idx] === -1) {
+                        // Find the first block above this empty space
+                        for (let checkRow = row - 1; checkRow >= 0; checkRow--) {
+                            const checkIdx = checkRow * GRID_SIZE + col;
+                            if (grid[checkIdx] !== -1) {
+                                // Move block down
+                                grid[idx] = grid[checkIdx];
+                                grid[checkIdx] = -1;
+                                moved = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (moved) {
+                render();
+                
+                // Check for chain reactions
+                setTimeout(() => {
+                    checkMatches();
+                }, 300);
+            } else {
+                checkWin();
+            }
+        }
+
+        // Check if any color has only 1-2 blocks remaining (unwinnable)
+        function checkForOrphanedBlocks() {
+            const colorCounts = [0, 0, 0, 0];
+            for (const cell of grid) {
+                if (cell >= 0 && cell < NUM_COLORS) {
+                    colorCounts[cell]++;
+                }
+            }
+            // A color is orphaned if it has 1 or 2 blocks (can't form a match of 3+)
+            for (let color = 0; color < NUM_COLORS; color++) {
+                if (colorCounts[color] > 0 && colorCounts[color] < 3) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Check if player has won
+        function checkWin() {
+            const blocksRemaining = grid.filter(v => v !== -1).length;
+
+            if (blocksRemaining === 0) {
+                gameOver = true;
+                const diff = moves - par;
+                let resultMsg;
+
+                if (diff < 0) {
+                    resultMsg = `🎉 Amazing! ${Math.abs(diff)} under par!`;
+                } else if (diff === 0) {
+                    resultMsg = `✨ Perfect! Right on par!`;
+                } else {
+                    resultMsg = `👏 Cleared! ${diff} over par.`;
+                }
+
+                setMessage(resultMsg, 'success');
+                saveGameState();
+
+                // Disable buttons
+                document.getElementById('giveUpBtn').disabled = true;
+                document.getElementById('undoBtn').disabled = true;
+
+                // Celebrate with confetti, then show share modal
+                celebrateWin();
+                setTimeout(() => {
+                    showShare();
+                }, 1000);
+            } else if (checkForOrphanedBlocks()) {
+                // Game is unwinnable - orphaned blocks detected
+                hasOrphanedBlocks = true;
+                setMessage('Not enough blocks of one color left to clear!', 'warning');
+                saveGameState();
+                // Keep undo and give up buttons enabled, but disable block selection
+                selectedCell = null;
+                render();
+            } else {
+                setMessage('Click a block to select it');
+            }
+        }
+
+        // Update stats display
+        function updateStats() {
+            document.getElementById('moves').textContent = moves;
+            document.getElementById('par').textContent = par;
+            document.getElementById('remaining').textContent = grid.filter(v => v !== -1).length;
+            document.getElementById('puzzleNum').textContent = puzzleNumber;
+        }
+
+        // Set message
+        function setMessage(text, type = '') {
+            const msgEl = document.getElementById('message');
+            msgEl.textContent = text;
+            msgEl.className = 'message';
+            if (type) msgEl.classList.add(type);
+        }
+
+        // Show share box
+        function showShare(isWin = true) {
+            const blocksRemaining = grid.filter(v => v !== -1).length;
+            
+            let resultEmoji;
+            let resultLine;
+            
+            if (isWin) {
+                const diff = moves - par;
+                if (diff <= -3) resultEmoji = '🏆';
+                else if (diff < 0) resultEmoji = '🔥';
+                else if (diff === 0) resultEmoji = '✅';
+                else resultEmoji = '👏';
+                resultLine = `${moves} moves (Par ${par}) ${resultEmoji}`;
+            } else {
+                resultEmoji = '💀';
+                resultLine = `Gave up with ${blocksRemaining} blocks left 😅`;
+            }
+            
+            // Build the move grid
+            let moveGrid = '';
+            for (let i = 0; i < moveResults.length; i++) {
+                if (i < par) {
+                    // Within par: green for clear, yellow for setup
+                    moveGrid += moveResults[i] ? '🟩' : '🟨';
+                } else {
+                    // Over par: red for all moves beyond par
+                    moveGrid += '🟥';
+                }
+            }
+            
+            // Add skull for give up, or gray squares for unused par moves on win
+            if (!isWin) {
+                moveGrid += '💀';
+            } else {
+                for (let i = moveResults.length; i < par; i++) {
+                    moveGrid += '⬜';
+                }
+            }
+            
+            const chilies = '🌶️'.repeat(difficulty);
+            const shareText = `Making Moves #${puzzleNumber} ${chilies}
+${moveGrid}
+${resultLine}`;
+            
+            document.getElementById('shareText').textContent = shareText;
+            document.getElementById('shareBox').classList.add('visible');
+        }
+        
+        // Give up on the puzzle
+        function giveUp() {
+            const blocksRemaining = grid.filter(v => v !== -1).length;
+            if (blocksRemaining === 0 || gameOver) return; // Already won or gave up
+
+            gameOver = true;
+            hasOrphanedBlocks = false;  // Clear orphaned state
+            setMessage(`😅 Better luck tomorrow!`, 'warning');
+            showShare(false);
+            saveGameState();
+
+            // Disable further moves
+            document.getElementById('giveUpBtn').disabled = true;
+            document.getElementById('undoBtn').disabled = true;
+            selectedCell = null;
+            render();
+        }
+
+        // Copy share text
+        function copyShare() {
+            const text = document.getElementById('shareText').textContent;
+            
+            // Try modern clipboard API first
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    setMessage('Copied to clipboard!', 'success');
+                }).catch(() => {
+                    fallbackCopy(text);
+                });
+            } else {
+                fallbackCopy(text);
+            }
+        }
+        
+        // Fallback copy method for non-HTTPS or older browsers
+        function fallbackCopy(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                document.execCommand('copy');
+                setMessage('Copied to clipboard!', 'success');
+            } catch (e) {
+                setMessage('Couldn\'t copy — try selecting the text manually', 'warning');
+            }
+            
+            document.body.removeChild(textarea);
+        }
+
+        // ========== SOLUTION REPLAY FEATURE ==========
+
+        let isReplayingolution = false;
+
+        // Show solution button handler
+        function showSolution() {
+            if (isReplayingolution) return;
+
+            const btn = document.getElementById('solutionBtn');
+            const status = document.getElementById('solutionStatus');
+
+            if (!currentPuzzle || !currentPuzzle.solution) {
+                status.textContent = 'No solution available';
+                return;
+            }
+
+            btn.disabled = true;
+            // Start replay using the stored solution
+            replaySolution(currentPuzzle.solution);
+        }
+
+        // Replay the solution moves with animation
+        function replaySolution(solution) {
+            isReplayingolution = true;
+            const status = document.getElementById('solutionStatus');
+
+            // Reset to initial grid
+            grid = [...initialGrid];
+            selectedCell = null;
+            render();
+
+            let moveIndex = 0;
+
+            function playNextMove() {
+                if (moveIndex >= solution.length) {
+                    // Verify the board is actually clear
+                    const blocksLeft = grid.filter(c => c !== -1).length;
+                    if (blocksLeft === 0) {
+                        status.textContent = `Solution complete! (${solution.length} moves)`;
+                    } else {
+                        status.textContent = `Solution ended with ${blocksLeft} blocks remaining`;
+                    }
+                    isReplayingolution = false;
+                    return;
+                }
+
+                const move = solution[moveIndex];
+                status.textContent = `Move ${moveIndex + 1} of ${solution.length}...`;
+
+                // Verify the move is valid on current grid state
+                const validDests = getSlideDestinations(move.from);
+                if (grid[move.from] === -1) {
+                    console.error(`Move ${moveIndex + 1}: No block at position ${move.from}`);
+                    status.textContent = `Error: Invalid move ${moveIndex + 1}`;
+                    isReplayingolution = false;
+                    return;
+                }
+                if (!validDests.includes(move.to)) {
+                    console.error(`Move ${moveIndex + 1}: ${move.to} not in valid destinations`, validDests);
+                    status.textContent = `Error: Invalid destination at move ${moveIndex + 1}`;
+                    isReplayingolution = false;
+                    return;
+                }
+
+                // Highlight the selected block briefly
+                selectedCell = move.from;
+                render();
+
+                setTimeout(() => {
+                    // Execute the move using game logic
+                    grid[move.to] = grid[move.from];
+                    grid[move.from] = -1;
+                    selectedCell = null;
+                    render();
+
+                    // Check for matches and animate (reuses game's resolution logic)
+                    setTimeout(() => {
+                        resolveAndAnimate(() => {
+                            moveIndex++;
+                            setTimeout(playNextMove, 400);
+                        });
+                    }, 200);
+                }, 400);
+            }
+
+            // Start after a brief delay
+            setTimeout(playNextMove, 500);
+        }
+
+        // Resolve board with animations (for replay) - matches game logic exactly
+        function resolveAndAnimate(callback) {
+            let matched = new Set();
+
+            for (let i = 0; i < grid.length; i++) {
+                if (grid[i] === -1) continue;
+                const connected = findConnected(i, grid[i]);
+                if (connected.size >= 3) {
+                    connected.forEach(idx => matched.add(idx));
+                }
+            }
+
+            if (matched.size > 0) {
+                // Animate removal
+                const cells = document.querySelectorAll('.cell');
+                matched.forEach(idx => {
+                    cells[idx].classList.add('popping');
+                });
+
+                setTimeout(() => {
+                    matched.forEach(idx => {
+                        grid[idx] = -1;
+                    });
+                    render();
+
+                    // Apply gravity
+                    setTimeout(() => {
+                        applyGravityForReplay(() => {
+                            // Check for chain reactions
+                            setTimeout(() => {
+                                resolveAndAnimate(callback);
+                            }, 200);
+                        });
+                    }, 100);
+                }, 300);
+            } else {
+                callback();
+            }
+        }
+
+        // Apply gravity for replay - must match game's applyGravity exactly
+        function applyGravityForReplay(callback) {
+            let moved = false;
+
+            for (let col = 0; col < GRID_SIZE; col++) {
+                for (let row = GRID_SIZE - 1; row >= 0; row--) {
+                    const idx = row * GRID_SIZE + col;
+                    if (grid[idx] === -1) {
+                        for (let checkRow = row - 1; checkRow >= 0; checkRow--) {
+                            const checkIdx = checkRow * GRID_SIZE + col;
+                            if (grid[checkIdx] !== -1) {
+                                grid[idx] = grid[checkIdx];
+                                grid[checkIdx] = -1;
+                                moved = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            render();
+            callback();
+        }
+
+        // Start the game
+        init();
+    </script>
+</body>
+</html>
