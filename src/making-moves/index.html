@@ -362,7 +362,7 @@
 
     <div class="share-box" id="shareBox">
         <div class="share-text" id="shareText"></div>
-        <button class="primary" onclick="copyResults()">Copy Results</button>
+        <button class="primary" id="copyBtn" onclick="copyResults()">Copy Results</button>
         <button class="secondary solution-btn" id="solutionBtn" onclick="showSolution()">Show Solution</button>
         <div class="solution-status" id="solutionStatus"></div>
     </div>
@@ -1277,35 +1277,53 @@ ${resultLine}`;
         // Copy results to clipboard
         function copyResults() {
             const text = document.getElementById('shareText').textContent;
+            const btn = document.getElementById('copyBtn');
 
             // Try modern clipboard API first
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(() => {
-                    setMessage('Copied to clipboard!', 'success');
+                    showCopyFeedback(btn, true);
                 }).catch(() => {
-                    fallbackCopy(text);
+                    fallbackCopy(text, btn);
                 });
             } else {
-                fallbackCopy(text);
+                fallbackCopy(text, btn);
             }
+        }
+
+        // Show visual feedback on the copy button
+        function showCopyFeedback(btn, success) {
+            const originalText = btn.textContent;
+            if (success) {
+                btn.textContent = 'Copied! ✓';
+                btn.style.background = '#2ecc71';
+            } else {
+                btn.textContent = 'Failed to copy';
+                btn.style.background = '#e74c3c';
+            }
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.background = '';
+            }, 2000);
         }
         
         // Fallback copy method for non-HTTPS or older browsers
-        function fallbackCopy(text) {
+        function fallbackCopy(text, btn) {
             const textarea = document.createElement('textarea');
             textarea.value = text;
             textarea.style.position = 'fixed';
             textarea.style.opacity = '0';
             document.body.appendChild(textarea);
             textarea.select();
-            
+
             try {
                 document.execCommand('copy');
-                setMessage('Copied to clipboard!', 'success');
+                showCopyFeedback(btn, true);
             } catch (e) {
+                showCopyFeedback(btn, false);
                 setMessage('Couldn\'t copy — try selecting the text manually', 'warning');
             }
-            
+
             document.body.removeChild(textarea);
         }
 
